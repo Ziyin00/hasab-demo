@@ -33,7 +33,80 @@ Every major feature must be broken down into a structured sub-directory in `src/
 - **Small PRs Only**: Break down tasks into small, reviewable chunks.
 - **Environment Variables**: Always use `process.env.NEXT_PUBLIC_API_URL` etc. Never hardcode endpoints.
 
+## Architecture & Rules
+
+To ensure a scalable and maintainable codebase, all developers **MUST** follow these rules:
+
 ---
+
+### 1. State Management Strategy
+- **React Query (Server State)**: Use for all data fetching, caching, and synchronization with the server (e.g., jobs, history, user profiles, API data).
+- **Zustand (UI State ONLY)**: Use for global UI-only updates where React state isn't enough (e.g., modal open/close states, file preview toggles, local pipeline progress).
+
+---
+
+### 2. Feature-Driven Development
+Every major feature must be broken down into a structured sub-directory in `src/features/` with a consistent internal structure (see Project Structure for details).
+
+---
+
+### 3. Componentization
+- Pages should be lean entry points that orchestrate components.
+- Complex UIs (like Transcription or Meeting Minutes) must be broken into small, reusable components.
+- Use the central `FormProvider` (Zod + React Hook Form) for all form logic.
+
+---
+
+### 4. Development Workflow
+- **Small PRs Only**: Break down tasks into small, reviewable chunks.
+- **Environment Variables**: Always use `process.env.NEXT_PUBLIC_API_URL` etc. Never hardcode endpoints.
+
+---
+
+### 5. Design System Enforcement 
+
+To maintain UI consistency and scalability, all styling must follow the centralized design system.
+
+#### Color Rules
+- ❌ Never use raw Tailwind color classes  
+  - e.g. `text-red-500`, `bg-blue-200`, `border-gray-300`
+
+- ✅ Always use design system tokens (shadcn / CSS variables)  
+  - e.g.:
+    ```tsx
+    className="text-primary bg-background border-border"
+    ```
+
+---
+
+#### Typography Rules
+- ❌ Never hardcode text sizes in components  
+  - e.g. `text-sm`, `text-lg`, `text-xl`
+
+- ✅ Use globally defined typography styles from `globals.css`
+  - Typography must be controlled centrally for:
+    - responsive design (mobile vs desktop)
+    - consistency across the application
+
+---
+
+#### Semantic Typography (Required)
+All text styles should use semantic utility classes defined in `globals.css`.
+
+Example:
+```css
+.text-heading {
+  @apply text-2xl md:text-3xl font-semibold;
+}
+
+.text-body {
+  @apply text-base;
+}
+
+.text-caption {
+  @apply text-sm text-muted-foreground;
+}
+```
 
 ## Project Structure
 
