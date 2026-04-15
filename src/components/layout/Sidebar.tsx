@@ -12,6 +12,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { 
   FileAudio, 
@@ -30,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useAuthStore } from "@/store/auth.store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +62,10 @@ const settingItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { state } = useSidebar();
+  const { user, logout } = useAuthStore();
+  
+  const isCollapsed = state === "collapsed";
 
   const renderMenuItems = (items: typeof generalItems) => (
     <SidebarMenu>
@@ -69,6 +76,7 @@ export function AppSidebar() {
             <SidebarMenuButton 
               asChild 
               isActive={isActive}
+              tooltip={item.title}
               className={cn(
                 "transition-all duration-200",
                 isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent"
@@ -76,7 +84,7 @@ export function AppSidebar() {
             >
               <Link href={item.url} className="flex items-center gap-3">
                 <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                <span>{item.title}</span>
+                {!isCollapsed && <span>{item.title}</span>}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -86,9 +94,19 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 border-b">
-        <div className="text-xl font-bold italic tracking-tighter">Hasab AI</div>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
+        {!isCollapsed ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xl font-bold italic tracking-tighter">Hasab AI</div>
+            <SidebarTrigger className="-mr-2" />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-xl font-bold italic">H</div>
+            <SidebarTrigger />
+          </div>
+        )}
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -122,14 +140,18 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage alt="User" />
-                    <AvatarFallback className="rounded-lg">HA</AvatarFallback>
+                    <AvatarImage alt={user?.name || "User"} />
+                    <AvatarFallback className="rounded-lg">{user?.name?.substring(0, 2).toUpperCase() || "HA"}</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold text-primary">Hasab User</span>
-                    <span className="truncate text-xs text-muted-foreground">user@hasab.ai</span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                  {!isCollapsed && (
+                    <>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold text-primary">{user?.name || "Hasab User"}</span>
+                        <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
+                      </div>
+                      <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                    </>
+                  )}
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -141,12 +163,12 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage alt="User" />
-                      <AvatarFallback className="rounded-lg">HA</AvatarFallback>
+                      <AvatarImage alt={user?.name || "User"} />
+                      <AvatarFallback className="rounded-lg">{user?.name?.substring(0, 2).toUpperCase() || "HA"}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-primary">Hasab User</span>
-                      <span className="truncate text-xs text-muted-foreground">user@hasab.ai</span>
+                      <span className="truncate font-semibold text-primary">{user?.name || "Hasab User"}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -170,7 +192,10 @@ export function AppSidebar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => logout()}
+                >
                   <LogOut className="size-4 mr-2" />
                   Logout
                 </DropdownMenuItem>

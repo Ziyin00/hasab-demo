@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v3";
 
 export const translationRequestSchema = z.object({
   file: z.any().optional(),

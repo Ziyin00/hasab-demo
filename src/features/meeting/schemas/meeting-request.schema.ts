@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v3";
 
 export const meetingRequestSchema = z.object({
   file: z.any().refine((file) => file instanceof File, "Must be a file"),

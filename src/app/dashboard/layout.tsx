@@ -27,9 +27,6 @@ export default function DashboardLayout({
         <AppSidebar />
         <div className="flex flex-col flex-1">
           <header className="h-16 border-b flex items-center px-6 sticky top-0 bg-background z-10 gap-4">
-            <SidebarTrigger />
-            <div className="h-4 w-[1px] bg-border mx-2" />
-            
             <Breadcrumb>
               <BreadcrumbList>
                 {pathSegments.map((segment, index) => {

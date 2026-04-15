@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import QueryProvider from "@/components/providers/query-provider";
 
+import { AuthInitializer } from "@/components/providers/auth-initializer";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -29,6 +31,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             <TooltipProvider>
+              <AuthInitializer />
               {children}
               <Toaster />
             </TooltipProvider>
