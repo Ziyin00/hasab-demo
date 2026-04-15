@@ -1,3 +1,5 @@
+"use client";
+
 import { HistoryList } from "@/features/history/components/HistoryList";
 import { useHistoryQuery } from "@/features/history/hooks/useHistoryQuery";
 import { PageHeader } from "@/components/common/PageHeader";
