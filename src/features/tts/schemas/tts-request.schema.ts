@@ -1,4 +1,4 @@
-import { z } from "zod/v3";
+import { z } from "zod";
 
 export const ttsRequestSchema = z.object({
   text: z.string().min(1, "Text is required").max(5000),

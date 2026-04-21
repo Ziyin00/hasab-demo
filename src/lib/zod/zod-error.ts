@@ -1,4 +1,4 @@
-import { z } from "zod/v3";
+import { z } from "zod";
 
 export const formatZodError = (error: z.ZodError) => {
   return error.issues.map((err) => ({

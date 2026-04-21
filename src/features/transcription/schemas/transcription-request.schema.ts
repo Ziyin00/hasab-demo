@@ -1,4 +1,4 @@
-import { z } from "zod/v3";
+import { z } from "zod";
 
 export const transcriptionRequestSchema = z.object({
   file: z.any().refine((file) => file instanceof File, "Must be a file"),
