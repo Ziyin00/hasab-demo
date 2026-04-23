@@ -131,7 +131,7 @@
     @apply font-heading;
   }
   body, p, a, span, li, ul {
-    @apply bg-background text-foreground font-sans;
+    @apply  text-foreground font-sans;
   }
   html {
     @apply font-sans;
