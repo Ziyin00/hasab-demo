@@ -102,6 +102,55 @@ export interface OrgRegisterRequest {
   postal_code?: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  data: {
+    access_token: string;
+    refresh_token: string;
+    access_token_expires_at: string;
+    refresh_token_expires_at: string;
+  };
+}
+
+export interface InvitationValidateResponse {
+  valid: boolean;
+  message?: string;
+  email: string;
+  role?: string;
+  organization?: string;
+  hasAccount: boolean;
+}
+
+export interface InvitationLoginRequest {
+  email: string;
+  password: string;
+  invitation_token: string;
+}
+
+export interface InvitationRegisterRequest {
+  name: string;
+  phone_number?: string;
+  password: string;
+  password_confirmation: string;
+  email: string;
+  invitation_token: string;
+}
+
 export interface ProfileResponse {
   status: string;
   data: {

@@ -1,26 +1,27 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ForgotPasswordForm } from "@/components/forms/auth/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
     <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Forgot Password?</h1>
-        <p className="text-muted-foreground">Enter your email and we&apos;ll send you a reset link</p>
+      <div className="space-y-1">
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to Sign In
+        </Link>
+        <h1 className="text-2xl font-bold text-foreground">Reset Password</h1>
+        <p className="text-muted-foreground text-sm">
+          Enter the email associated with your account
+        </p>
       </div>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="m@example.com" />
-        </div>
-        <Button className="w-full">Send Reset Link</Button>
-      </div>
-      <div className="text-center text-sm">
-        <a href="/login" className="underline font-medium">
-          Back to Login
-        </a>
-      </div>
+
+      <ForgotPasswordForm />
     </div>
   );
 }
