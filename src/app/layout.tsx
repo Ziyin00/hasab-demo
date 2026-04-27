@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description: "Next generation AI content processing dashboard",
   icons: {
     icon: "/hasab_ai.png",
+    shortcut: "/hasab_ai.png",
     apple: "/hasab_ai.png",
   },
 };

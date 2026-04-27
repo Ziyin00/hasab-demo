@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Sidebar,
@@ -72,6 +72,7 @@ const settingItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { state } = useSidebar();
   const { user, logout } = useAuthStore();
   
@@ -249,8 +250,11 @@ export function AppSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => logout()}
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  onClick={async () => {
+                    await logout();
+                    router.push("/login");
+                  }}
                 >
                   <LogOut className="size-4 mr-2" />
                   Logout
