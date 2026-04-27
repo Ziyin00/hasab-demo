@@ -13,6 +13,10 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Hasab AI - Dashboard",
   description: "Next generation AI content processing dashboard",
+  icons: {
+    icon: "/hasab_ai.png",
+    apple: "/hasab_ai.png",
+  },
 };
 
 export default function RootLayout({

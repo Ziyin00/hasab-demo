@@ -18,28 +18,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Logo */}
         <div className="absolute top-8 left-8 flex items-center gap-3 z-10">
-          <div className="w-10 h-10 flex items-center justify-center">
-            <svg viewBox="0 0 40 40" fill="none" className="w-10 h-10">
-              <path
-                d="M20 2L36 11V29L20 38L4 29V11L20 2Z"
-                stroke="#a855f7"
-                strokeWidth="2"
-                fill="rgba(168,85,247,0.15)"
-              />
-              <text
-                x="50%"
-                y="54%"
-                dominantBaseline="middle"
-                textAnchor="middle"
-                fontSize="13"
-                fontWeight="bold"
-                fill="#a855f7"
-                fontFamily="monospace"
-              >
-                {"<>"}
-              </text>
-            </svg>
-          </div>
+          <Image
+            src="/hasab_ai.png"
+            alt="Hasab AI"
+            width={36}
+            height={36}
+            className="rounded-lg"
+          />
           <h1 className="text-white font-semibold text-lg tracking-tight">
             Hasab AI
           </h1>

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const r = require\\('c:/Users/HP/Desktop/hasab/hasab-dashbaord-v3/node_modules/radix-ui'\\); console.log\\(Object.keys\\(r\\).filter\\(k => k.toLowerCase\\(\\).includes\\('slot'\\) || k.toLowerCase\\(\\).includes\\('label'\\)\\)\\)\")",
+      "Bash(pnpm add *)"
+    ]
+  }
+}

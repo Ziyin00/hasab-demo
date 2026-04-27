@@ -69,6 +69,39 @@ export interface LoginResponse {
   refresh_token_expires_at: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  access_token: string;
+  refresh_token: string;
+  access_token_expires_at: string;
+  refresh_token_expires_at: string;
+}
+
+export interface IndividualRegisterRequest {
+  name: string;
+  email: string;
+  phone_number: string;
+  password: string;
+  password_confirmation: string;
+  user_type: "individual";
+}
+
+export interface OrgRegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  user_type: "organization";
+  organization_name: string;
+  organization_email: string;
+  organization_phone: string;
+  website?: string;
+  address: string;
+  country: string;
+  city: string;
+  postal_code?: string;
+}
+
 export interface ProfileResponse {
   status: string;
   data: {
