@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   Sidebar,
   SidebarContent,
@@ -15,12 +16,12 @@ import {
   useSidebar,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { 
-  FileAudio, 
-  Languages, 
-  Mic2, 
-  Clock, 
-  Key, 
+import {
+  FileAudio,
+  Languages,
+  Mic2,
+  Clock,
+  Key,
   LayoutDashboard,
   Subtitles,
   Users,
@@ -28,10 +29,16 @@ import {
   CreditCard,
   Settings,
   LogOut,
-  ChevronsUpDown
+  ChevronsUpDown,
+  HelpCircle,
+  MessageSquare,
+  FileText,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuthStore } from "@/store/auth.store";
 import {
   DropdownMenu,
@@ -55,7 +62,7 @@ const playgroundItems = [
   { title: "Subtitles", url: "/dashboard/playground/subtitles", icon: Subtitles },
 ];
 
-const bottomItems = [
+const historyItems = [
   { title: "History", url: "/dashboard/history", icon: Clock },
 ];
 
@@ -69,6 +76,7 @@ export function AppSidebar() {
   const { user, logout } = useAuthStore();
   
   const isCollapsed = state === "collapsed";
+  const { theme, setTheme } = useTheme();
 
   const renderMenuItems = (items: typeof generalItems) => (
     <SidebarMenu>
@@ -101,12 +109,15 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
         {!isCollapsed ? (
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xl font-bold italic tracking-tighter">Hasab AI</div>
+            <div className="flex items-center gap-2">
+              <Image src="/hasab_ai.png" alt="Hasab AI" width={28} height={28} className="rounded-md" />
+              <span className="font-bold text-lg tracking-tight">Hasab AI</span>
+            </div>
             <SidebarTrigger className="-mr-2" />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <div className="text-xl font-bold italic">H</div>
+            <Image src="/hasab_ai.png" alt="Hasab AI" width={28} height={28} className="rounded-md" />
             <SidebarTrigger />
           </div>
         )}
@@ -133,9 +144,34 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        <SidebarGroup>
+          <SidebarGroupContent>
+            {renderMenuItems(historyItems)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            {renderMenuItems(bottomItems)}
+            <SidebarMenu>
+              {[
+                { title: "Help", href: "/help", icon: HelpCircle },
+                { title: "Feedback", href: "/feedback", icon: MessageSquare },
+                { title: "Terms & Conditions", href: "/terms", icon: FileText },
+              ].map(({ title, href, icon: Icon }) => (
+                <SidebarMenuItem key={title}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={title}
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Link href={href} className="flex items-center gap-3">
+                      <Icon className="w-4 h-4" />
+                      {!isCollapsed && <span className="text-xs">{title}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -155,7 +191,7 @@ export function AppSidebar() {
                   {!isCollapsed && (
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold text-primary">{user?.name || "Hasab User"}</span>
+                        <span className="truncate font-semibold">{user?.name || "Hasab User"}</span>
                         <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
@@ -176,7 +212,7 @@ export function AppSidebar() {
                       <AvatarFallback className="rounded-lg">{user?.name?.substring(0, 2).toUpperCase() || "HA"}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-primary">{user?.name || "Hasab User"}</span>
+                      <span className="truncate font-semibold">{user?.name || "Hasab User"}</span>
                       <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
                     </div>
                   </div>
@@ -200,8 +236,19 @@ export function AppSidebar() {
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                >
+                  {theme === "dark" ? (
+                    <Sun className="size-4" />
+                  ) : (
+                    <Moon className="size-4" />
+                  )}
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => logout()}
                 >

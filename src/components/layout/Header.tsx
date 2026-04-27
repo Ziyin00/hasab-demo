@@ -6,11 +6,10 @@ export const Header = () => {
   const { user } = useAuth();
 
   return (
-    <header className="h-16 border-b flex items-center justify-between px-6 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="h-16 border-none flex items-center justify-between px-6 bg-background backdrop-blur-md sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <h2 className="font-bold text-xl tracking-tight">Hasab AI</h2>
       </div>
-      
       <div className="flex items-center gap-4">
         {user ? (
           <div className="flex items-center gap-3">
