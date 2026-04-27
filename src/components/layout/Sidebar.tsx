@@ -45,15 +45,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const generalItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "History", url: "/dashboard/history", icon: Clock },
 ];
 
 const playgroundItems = [
   { title: "Transcription", url: "/dashboard/playground/transcription", icon: FileAudio },
   { title: "Translation", url: "/dashboard/playground/translation", icon: Languages },
-  { title: "TTS", url: "/dashboard/playground/tts", icon: Mic2 },
+  { title: "Text to Speech", url: "/dashboard/playground/tts", icon: Mic2 },
   { title: "Meeting Minutes", url: "/dashboard/playground/meeting-minutes", icon: Users },
   { title: "Subtitles", url: "/dashboard/playground/subtitles", icon: Subtitles },
+];
+
+const bottomItems = [
+  { title: "History", url: "/dashboard/history", icon: Clock },
 ];
 
 const settingItems = [
@@ -127,6 +130,12 @@ export function AppSidebar() {
           <SidebarGroupLabel className="px-4 py-2">Account & API</SidebarGroupLabel>
           <SidebarGroupContent>
             {renderMenuItems(settingItems)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            {renderMenuItems(bottomItems)}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
