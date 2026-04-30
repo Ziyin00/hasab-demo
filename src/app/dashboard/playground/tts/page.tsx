@@ -1,15 +1,15 @@
-import { PageHeader } from "@/components/common/PageHeader";
+import { TTSPage } from "@/features/tts/components/TTSPage";
 
-export default function TTSPage() {
+export default function TTSPlaygroundPage() {
   return (
-    <div className="max-w-4xl mx-auto">
-      <PageHeader 
-        title="Text to Speech" 
-        description="Generate natural voices for your content" 
-      />
-      <div className="p-12 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground">
-        TTS interface coming soon...
+    <div className="space-y-2">
+      <div>
+        <h1 className="text-2xl font-semibold">Speech Synthesis</h1>
+        <p className="text-sm text-muted-foreground">
+          Generate natural-sounding speech from text
+        </p>
       </div>
+      <TTSPage />
     </div>
   );
 }
