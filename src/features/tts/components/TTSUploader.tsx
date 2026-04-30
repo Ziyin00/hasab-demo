@@ -30,13 +30,13 @@ const TTSFormContent = () => {
 };
 
 export const TTSUploader = () => {
-  const { config, generateSpeech } = useTTS();
+  const { generateSpeech } = useTTS();
 
   return (
     <Card className="border-none shadow-none bg-transparent">
       <CardHeader className="px-0 pt-0">
-        <h2 className="text-3xl font-semibold tracking-tight">{config.ui.title}</h2>
-        <CardDescription>{config.ui.description}</CardDescription>
+        <h2 className="text-3xl font-semibold tracking-tight">Text to Speech</h2>
+        <CardDescription>Convert text into natural sounding speech</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
         <FormProvider 

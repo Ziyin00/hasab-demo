@@ -59,7 +59,7 @@ export function ResetPasswordForm({ token, email }: ResetPasswordFormProps) {
         password: values.password,
         password_confirmation: values.confirmPassword,
       });
-      await login(res.data.data);
+      await login({ ...res.data.data, message: res.data.message });
       addToast("Password reset", "Your password has been updated.", "success");
       router.push("/dashboard");
     } catch (err: any) {

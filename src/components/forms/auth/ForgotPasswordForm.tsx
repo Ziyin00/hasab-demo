@@ -22,7 +22,7 @@ export function ForgotPasswordForm() {
   const [sentEmail, setSentEmail] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any),
     defaultValues: { email: "" },
   });
 
