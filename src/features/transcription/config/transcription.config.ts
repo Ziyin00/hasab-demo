@@ -2,26 +2,27 @@ export const transcriptionConfig = {
   type: "transcription",
 
   input: {
-    accept: ["audio/*"],
-    maxSizeMB: 25,
-    maxSizeMBForCompany: 25,
+    accept: ["video/*", "audio/*"],
+    maxSizeMB: 500,
   },
 
   ui: {
     title: "Transcription",
-    description: "Convert speech to text",
-    uploadLabel: "Upload audio file",
+    description: "Upload audio or video and generate transcript outputs",
+    uploadLabel: "Upload audio or video file",
   },
 
   processing: {
-    endpoint: "/upload-audio",
+    endpoint: "/generate-subtitles",
     supportsLanguage: true,
+    supportsStyling: true,
+    supportsBurnIn: true,
     supportsSpeakerDiarization: true,
   },
 
   output: {
-    type: "text",
+    type: "video/srt",
     downloadable: true,
-    exportFormats: ["pdf", "txt", "json"], // for history
+    exportFormats: ["mp4", "srt", "vtt"],
   },
 };

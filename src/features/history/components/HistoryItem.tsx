@@ -1,7 +1,7 @@
 import { HistoryItem } from "../types/history.types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, FileText, Languages, Mic2, Subtitles, Users } from "lucide-react";
+import { Clock, FileText, Languages, Mic2, Users } from "lucide-react";
 
 interface HistoryItemProps {
   item: HistoryItem;
@@ -12,7 +12,6 @@ const iconMap = {
   translation: Languages,
   tts: Mic2,
   meeting: Users,
-  subtitles: Subtitles,
 };
 
 export const HistoryItemComponent = ({ item }: HistoryItemProps) => {

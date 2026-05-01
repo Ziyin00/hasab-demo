@@ -1,6 +1,6 @@
 export interface HistoryItem {
   id: string;
-  type: "transcription" | "translation" | "tts" | "meeting" | "subtitles";
+  type: "transcription" | "translation" | "tts" | "meeting";
   title: string;
   status: "completed" | "processing" | "failed";
   createdAt: string;
