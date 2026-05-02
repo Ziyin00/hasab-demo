@@ -27,7 +27,7 @@ export default function DashboardLayout({
         <AppSidebar />
         <div className="flex flex-col flex-1">
           <header className="h-16 flex items-center px-6 sticky top-0  z-10 gap-4">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger className="-ml-1 md:hidden" />
             <Breadcrumb>
               <BreadcrumbList>
                 {pathSegments.map((segment, index) => {

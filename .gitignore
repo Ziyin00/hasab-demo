@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+
+# Local pnpm content-addressable store when present in repo root (never commit)
+.pnpm-store/
 /.pnp
 .pnp.*
 .yarn/*

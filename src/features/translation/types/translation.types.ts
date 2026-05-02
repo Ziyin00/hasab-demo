@@ -1,14 +1,21 @@
-import { translationConfig } from "../config/translation.config";
+/** Raw API response (varies by version). */
+export type TranslationApiResponse = Record<string, unknown> & {
+  data?: {
+    translation?: {
+      source_text?: string;
+      translated_text?: string;
+    };
+    [key: string]: unknown;
+  };
+};
 
-export interface TranslationRequest {
-  file?: File;
-  text?: string;
-  sourceLanguage?: string;
+export type TranslationTexts = {
+  sourceText: string;
+  translatedText: string;
+};
+
+export interface TranslationTextFormValues {
+  text: string;
+  sourceLanguage: string;
   targetLanguage: string;
-}
-
-export interface TranslationResponse {
-  id: string;
-  translatedText?: string;
-  status: "pending" | "processing" | "completed" | "failed";
 }

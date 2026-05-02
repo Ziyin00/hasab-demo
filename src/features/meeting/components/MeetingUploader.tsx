@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 
 export const MeetingUploader = () => {
-  const { config, processMeeting } = useMeetingMinutes();
+  const { config, submitMeetingMinutesUpload } = useMeetingMinutes();
 
-  const handleUpload = async (data: any) => {
-    await processMeeting(data.file);
+  const handleUpload = async (data: { file: File }) => {
+    await submitMeetingMinutesUpload({ file: data.file, language: "amh" });
   };
 
   return (
@@ -21,11 +21,7 @@ export const MeetingUploader = () => {
         <CardDescription>{config.ui.description}</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
-        <FormProvider 
-          schema={meetingRequestSchema} 
-          onSubmit={handleUpload}
-          defaultValues={{ includeActionItems: true }}
-        >
+        <FormProvider schema={meetingRequestSchema} onSubmit={handleUpload}>
           <div className="space-y-6">
             <FileUploader 
               name="file" 

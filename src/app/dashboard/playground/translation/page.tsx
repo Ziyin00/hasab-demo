@@ -1,15 +1,15 @@
-import { PageHeader } from "@/components/common/PageHeader";
+import { TranslationPlayground } from "@/features/translation/components/TranslationPlayground";
 
-export default function TranslationPage() {
+export default function TranslationPlaygroundPage() {
   return (
-    <div className="max-w-4xl mx-auto">
-      <PageHeader 
-        title="Translation" 
-        description="Translate your audio or text to over 100 languages" 
-      />
-      <div className="p-12 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground">
-        Translation interface coming soon...
+    <div className="mx-auto w-full max-w-4xl -mt-5 space-y-6 sm:space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Translation</h1>
+        <p className="max-w-prose text-sm text-muted-foreground sm:text-base">
+          Translate passages between Ethiopian languages and English
+        </p>
       </div>
+      <TranslationPlayground />
     </div>
   );
 }

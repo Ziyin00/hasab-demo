@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -23,7 +24,6 @@ import {
   Clock,
   Key,
   LayoutDashboard,
-  Subtitles,
   Users,
   User,
   CreditCard,
@@ -59,7 +59,6 @@ const playgroundItems = [
   { title: "Translation", url: "/dashboard/playground/translation", icon: Languages },
   { title: "Text to Speech", url: "/dashboard/playground/tts", icon: Mic2 },
   { title: "Meeting Minutes", url: "/dashboard/playground/meeting-minutes", icon: Users },
-  { title: "Subtitles", url: "/dashboard/playground/subtitles", icon: Subtitles },
 ];
 
 const historyItems = [
@@ -73,11 +72,19 @@ const settingItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const { user, logout } = useAuthStore();
-  
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const isCollapsed = state === "collapsed";
   const { theme, setTheme } = useTheme();
+  const displayName = isMounted ? user?.name || "Hasab User" : "Hasab User";
+  const displayEmail = isMounted ? user?.email || "user@hasab.ai" : "user@hasab.ai";
+  const displayInitials = isMounted && user?.name ? user.name.substring(0, 2).toUpperCase() : "HA";
 
   const renderMenuItems = (items: typeof generalItems) => (
     <SidebarMenu>
@@ -96,7 +103,7 @@ export function AppSidebar() {
             >
               <Link href={item.url} className="flex items-center gap-3">
                 <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {!isCollapsed && <span>{item.title}</span>}
+                {(!isCollapsed || isMobile) && <span>{item.title}</span>}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -108,17 +115,31 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
-        {!isCollapsed ? (
+        {(!isCollapsed || isMobile) ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Image src="/hasab_ai.png" alt="Hasab AI" width={28} height={28} className="rounded-md" />
+              <Image
+                src="/hasab_ai.png"
+                alt="Hasab AI"
+                width={28}
+                height={28}
+                className="rounded-md"
+                style={{ height: "auto" }}
+              />
               <span className="font-bold text-lg tracking-tight">Hasab AI</span>
             </div>
             <SidebarTrigger className="-mr-2" />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <Image src="/hasab_ai.png" alt="Hasab AI" width={28} height={28} className="rounded-md" />
+            <Image
+              src="/hasab_ai.png"
+              alt="Hasab AI"
+              width={28}
+              height={28}
+              className="rounded-md"
+              style={{ height: "auto" }}
+            />
             <SidebarTrigger />
           </div>
         )}
@@ -167,7 +188,7 @@ export function AppSidebar() {
                   >
                     <Link href={href} className="flex items-center gap-3">
                       <Icon className="w-4 h-4" />
-                      {!isCollapsed && <span className="text-xs">{title}</span>}
+                      {(!isCollapsed || isMobile) && <span className="text-xs">{title}</span>}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -186,14 +207,14 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage alt={user?.name || "User"} />
-                    <AvatarFallback className="rounded-lg">{user?.name?.substring(0, 2).toUpperCase() || "HA"}</AvatarFallback>
+                    <AvatarImage alt={displayName || "User"} />
+                    <AvatarFallback className="rounded-lg">{displayInitials}</AvatarFallback>
                   </Avatar>
-                  {!isCollapsed && (
+                  {(!isCollapsed || isMobile) && (
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">{user?.name || "Hasab User"}</span>
-                        <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
+                        <span className="truncate font-semibold">{displayName}</span>
+                        <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
                     </>
@@ -209,12 +230,12 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage alt={user?.name || "User"} />
-                      <AvatarFallback className="rounded-lg">{user?.name?.substring(0, 2).toUpperCase() || "HA"}</AvatarFallback>
+                      <AvatarImage alt={displayName || "User"} />
+                      <AvatarFallback className="rounded-lg">{displayInitials}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{user?.name || "Hasab User"}</span>
-                      <span className="truncate text-xs text-muted-foreground">{user?.email || "user@hasab.ai"}</span>
+                      <span className="truncate font-semibold">{displayName}</span>
+                      <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>

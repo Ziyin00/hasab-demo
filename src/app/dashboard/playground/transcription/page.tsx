@@ -2,10 +2,12 @@ import { TranscriptionUploader } from "@/features/transcription/components/Trans
 
 export default function TranscriptionPlaygroundPage() {
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="mx-auto w-full max-w-4xl -mt-5 space-y-6 sm:space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Transcription Playground</h1>
-        <p className="text-muted-foreground">Upload your audio files and get instant transcriptions.</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Transcription</h1>
+        <p className="max-w-prose text-sm text-muted-foreground sm:text-base">
+          Upload audio or video and generate transcript-ready outputs.
+        </p>
       </div>
       <TranscriptionUploader />
     </div>
