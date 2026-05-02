@@ -72,7 +72,7 @@ const settingItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const { user, logout } = useAuthStore();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -103,7 +103,7 @@ export function AppSidebar() {
             >
               <Link href={item.url} className="flex items-center gap-3">
                 <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {!isCollapsed && <span>{item.title}</span>}
+                {(!isCollapsed || isMobile) && <span>{item.title}</span>}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -115,7 +115,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
-        {!isCollapsed ? (
+        {(!isCollapsed || isMobile) ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Image
@@ -188,7 +188,7 @@ export function AppSidebar() {
                   >
                     <Link href={href} className="flex items-center gap-3">
                       <Icon className="w-4 h-4" />
-                      {!isCollapsed && <span className="text-xs">{title}</span>}
+                      {(!isCollapsed || isMobile) && <span className="text-xs">{title}</span>}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -210,7 +210,7 @@ export function AppSidebar() {
                     <AvatarImage alt={displayName || "User"} />
                     <AvatarFallback className="rounded-lg">{displayInitials}</AvatarFallback>
                   </Avatar>
-                  {!isCollapsed && (
+                  {(!isCollapsed || isMobile) && (
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold">{displayName}</span>
