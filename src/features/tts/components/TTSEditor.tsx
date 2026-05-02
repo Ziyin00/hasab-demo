@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Loader2, Sparkles, UploadCloud, Smile } from "lucide-react";
+import { Globe, Loader2, Sparkles,} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -68,7 +68,7 @@ export function TTSEditor() {
           <Button
             onClick={generateSpeech}
             disabled={isSynthesizing || !text.trim()}
-            className="h-9 px-5 rounded-full bg-violet-600 hover:bg-violet-700 text-white gap-2 shadow-sm"
+            className="h-9 px-5 rounded-full  text-white gap-2 shadow-sm"
           >
             {isSynthesizing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
