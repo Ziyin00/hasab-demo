@@ -6,7 +6,9 @@ import { ArrowLeft, Loader2, FileAudio, Clock, HardDrive, Users } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DownloadPDFButton } from "./DownloadPDFButton";
 import { historyApi } from "../api/history.api";
+import { downloadTranscriptionPDF } from "../utils/pdf";
 
 function formatDuration(s: string) {
   const sec = parseFloat(s);
@@ -79,9 +81,12 @@ export function TranscriptionDetail({ id }: { id: number }) {
           <h1 className="text-xl font-semibold truncate">{name}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{formatDate(data.created_at)}</p>
         </div>
-        <Badge variant="outline" className={`text-xs px-2 ${style}`}>
-          {data.processing_status}
-        </Badge>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="outline" className={`text-xs px-2 ${style}`}>
+            {data.processing_status}
+          </Badge>
+          <DownloadPDFButton onDownload={() => downloadTranscriptionPDF(data)} />
+        </div>
       </div>
 
       {/* Meta info */}

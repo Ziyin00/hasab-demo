@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MoreHorizontal, Eye, Trash2, Loader2 } from "lucide-react";
@@ -24,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslationHistory } from "../hooks/useTranslationHistory";
 import { historyApi } from "../api/history.api";
 import { TablePagination } from "./TablePagination";
+import { TranslationDrawer } from "./TranslationDrawer";
+import type { TranslationRecord } from "../types/history.types";
 
 const LANG_NAMES: Record<string, string> = {
   amh: "Amharic",
@@ -49,8 +50,9 @@ function formatDate(str: string) {
 export function TranslationTable() {
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<TranslationRecord | null>(null);
   const { data, isLoading } = useTranslationHistory(page);
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   async function handleDelete(id: number) {
@@ -81,7 +83,13 @@ export function TranslationTable() {
   const total = data?.total ?? 0;
 
   return (
-    <div>
+    <>
+      <TranslationDrawer
+        record={selectedRecord}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
+      <div>
       <div className="rounded-xl border overflow-hidden">
         <Table>
           <TableHeader>
@@ -132,7 +140,7 @@ export function TranslationTable() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => router.push(`/dashboard/history/translation/${r.id}`)}
+                          onClick={() => { setSelectedRecord(r); setDrawerOpen(true); }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View Detail
@@ -157,5 +165,6 @@ export function TranslationTable() {
         <TablePagination page={page} lastPage={lastPage} total={total} onPage={setPage} />
       )}
     </div>
+    </>
   );
 }
