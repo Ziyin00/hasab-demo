@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function HistoryPage() {
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="w-full space-y-5">
       <div>
         <h1 className="text-2xl font-semibold">History</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -13,11 +13,11 @@ export default function HistoryPage() {
       </div>
 
       <Tabs defaultValue="transcription">
-        <TabsList variant="line" className="border-b w-full rounded-none bg-transparent h-10 justify-start gap-6 px-0">
-          <TabsTrigger value="transcription" className="px-0 text-sm font-medium">
+        <TabsList variant="line" className="border-b w-full rounded-none bg-transparent h-10 justify-start gap-4 px-0">
+          <TabsTrigger value="transcription" className="flex-none px-0 text-sm font-medium">
             Transcription
           </TabsTrigger>
-          <TabsTrigger value="translation" className="px-0 text-sm font-medium">
+          <TabsTrigger value="translation" className="flex-none px-0 text-sm font-medium">
             Translation
           </TabsTrigger>
         </TabsList>

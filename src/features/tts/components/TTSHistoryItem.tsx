@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Play, Pause, Trash2, Download, RotateCcw } from "lucide-react";
+import { Play, Pause, Trash2, Download, RotateCcw, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTTSStore } from "@/store/tts.store";
 import type { TTSHistoryRecord } from "../types/tts.types";
 
@@ -62,7 +68,7 @@ export function TTSHistoryItem({ record, onDelete }: TTSHistoryItemProps) {
   };
 
   return (
-    <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted/50 group cursor-pointer transition-colors">
+    <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
       <button
         onClick={togglePlay}
         disabled={!canPlay}
@@ -82,30 +88,33 @@ export function TTSHistoryItem({ record, onDelete }: TTSHistoryItemProps) {
         </p>
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-        <button
-          onClick={handleDelete}
-          className="p-1 rounded hover:text-destructive text-muted-foreground transition-colors"
-          title="Delete"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={handleReuse}
-          className="p-1 rounded hover:text-foreground text-muted-foreground transition-colors"
-          title="Copy text to editor"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={handleDownload}
-          disabled={!canPlay}
-          className="p-1 rounded hover:text-foreground text-muted-foreground disabled:opacity-30 transition-colors"
-          title="Download"
-        >
-          <Download className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onClick={handleReuse}>
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            Reload text
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDownload} disabled={!canPlay}>
+            <Download className="h-3.5 w-3.5 mr-2" />
+            Download
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleDelete}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

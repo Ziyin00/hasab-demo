@@ -8,7 +8,7 @@ export function TTSPage() {
   useTTSSpeakers();
 
   return (
-    <div className="flex h-[calc(100vh-130px)] border rounded-xl overflow-hidden bg-background">
+    <div className="flex flex-1 min-h-0 border rounded-xl overflow-hidden bg-background">
       <div className="flex-1 min-w-0">
         <TTSEditor />
       </div>
