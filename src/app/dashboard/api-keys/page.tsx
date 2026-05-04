@@ -1,15 +1,14 @@
 import { PageHeader } from "@/components/common/PageHeader";
+import { ApiKeyCard } from "@/features/api-key/components/ApiKeyCard";
 
 export default function APIKeysPage() {
   return (
-    <div className="max-w-4xl mx-auto">
-      <PageHeader 
-        title="API Keys" 
-        description="Manage your API keys for programmatic access" 
+    <div className="max-w-2xl space-y-6">
+      <PageHeader
+        title="API Keys"
+        description="Manage your API keys for programmatic access"
       />
-      <div className="p-12 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground">
-        API Keys management coming soon...
-      </div>
+      <ApiKeyCard />
     </div>
   );
 }
