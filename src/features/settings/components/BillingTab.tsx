@@ -1,22 +1,32 @@
 "use client";
 
-import { Coins } from "lucide-react";
+import { useState } from "react";
+import { Coins, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useProfile } from "../hooks/useSettings";
 import { TokenHistoryTable } from "./TokenHistoryTable";
+import { TopUpDialog } from "./TopUpDialog";
 
 export function BillingTab() {
   const { data: profile, isLoading } = useProfile();
+  const [topUpOpen, setTopUpOpen] = useState(false);
 
   return (
     <div className="space-y-5">
       {/* Token balance */}
       <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-sm font-semibold">Token balance</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Tokens consumed across all services.
-          </p>
+        <div className="px-6 py-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Token balance</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tokens consumed across all services.
+            </p>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => setTopUpOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Top Up
+          </Button>
         </div>
         <div className="px-6 py-5">
           <div className="flex items-center gap-4">
@@ -51,6 +61,8 @@ export function BillingTab() {
           <TokenHistoryTable />
         </div>
       </div>
+
+      <TopUpDialog open={topUpOpen} onOpenChange={setTopUpOpen} />
     </div>
   );
 }

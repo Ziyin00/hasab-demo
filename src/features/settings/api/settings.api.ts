@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type { ProfileResponse } from "@/types/api.types";
-import type { TokenHistoryResponse } from "../types/billing.types";
+import type { TokenHistoryResponse, BuyTokensPayload, BuyTokensResponse } from "../types/billing.types";
 
 export interface UpdateProfilePayload {
   name: string;
@@ -44,5 +44,10 @@ export const settingsApi = {
   getTokenHistory: (page: number) =>
     apiClient
       .get<TokenHistoryResponse>("/tokens/history", { params: { page } })
+      .then((r) => r.data.data),
+
+  buyTokens: (payload: BuyTokensPayload) =>
+    apiClient
+      .post<BuyTokensResponse>("/tokens/buy", payload)
       .then((r) => r.data.data),
 };

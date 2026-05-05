@@ -6,6 +6,7 @@ import {
   ChangePasswordPayload,
   UpdateOrganizationPayload,
 } from "../api/settings.api";
+import type { BuyTokensPayload } from "../types/billing.types";
 
 export type { UpdateProfilePayload, ChangePasswordPayload, UpdateOrganizationPayload };
 
@@ -40,6 +41,12 @@ export function useTokenHistory(page: number) {
     queryKey: ["token-history", page],
     queryFn: () => settingsApi.getTokenHistory(page),
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useBuyTokens() {
+  return useMutation({
+    mutationFn: (payload: BuyTokensPayload) => settingsApi.buyTokens(payload),
   });
 }
 

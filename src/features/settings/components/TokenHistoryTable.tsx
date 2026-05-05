@@ -85,7 +85,7 @@ export function TokenHistoryTable() {
 
   const serviceTypes = useMemo(() => {
     const seen = new Set<string>();
-    records.forEach((r) => seen.add(r.service_type));
+    records.forEach((r) => { if (r.service_type) seen.add(r.service_type); });
     return Array.from(seen);
   }, [records]);
 
