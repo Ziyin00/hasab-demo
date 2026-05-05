@@ -13,8 +13,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
+
 import { submitMeetingMinutesUpload } from "../api/meeting.api";
-import { exportMeetingMinutesPdf, exportMeetingMinutesTxt } from "../utils/exportMeeting";
+import {
+  exportMeetingMinutesPdfFromElement,
+  exportMeetingMinutesTxt,
+} from "../utils/exportMeeting";
 import { transcriptionApi } from "@/features/transcription/api/transcription.api";
 import { useMeetingStore } from "@/store/meeting.store";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -56,9 +61,15 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const SUMMARY_MARKDOWN_CLASS =
+  "max-w-none min-w-0 text-[15px] leading-relaxed sm:text-base [&_a]:wrap-break-word [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px] sm:[&_code]:text-[0.875em] [&_h1]:mt-5 [&_h1]:text-xl [&_h1]:font-bold sm:[&_h1]:mt-6 sm:[&_h1]:text-2xl [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-semibold sm:[&_h2]:mt-5 sm:[&_h2]:text-xl [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-semibold sm:[&_h3]:mt-4 sm:[&_h3]:text-lg [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 sm:[&_ol]:pl-6 [&_p]:my-3 [&_p]:wrap-break-word [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted [&_pre]:p-2.5 sm:[&_pre]:p-3 [&_pre]:text-[13px] sm:[&_pre]:text-sm [&_table]:w-full [&_table]:min-w-0 [&_table]:border-collapse [&_table]:text-sm [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:text-left [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 sm:[&_ul]:pl-6";
+
 export function MeetingPlayground() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const meetingPdfExportRef = useRef<HTMLDivElement>(null);
+  const pdfStampRef = useRef<HTMLSpanElement>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const [pdfExportBusy, setPdfExportBusy] = useState(false);
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState(0);
@@ -229,6 +240,61 @@ export function MeetingPlayground() {
     }
   }, [rawResponse]);
 
+  const summaryMdBody = useMemo(() => {
+    const s = summaryText?.trim();
+    return s ? s : "_No summary text returned._";
+  }, [summaryText]);
+
+  const pdfHeadingTitle = useMemo(() => {
+    const raw = fileMeta?.name?.trim();
+    if (!raw) return "Meeting minutes";
+    return raw.replace(/\.[^/.]+$/, "").trim() || raw;
+  }, [fileMeta?.name]);
+
+  const flushPaint = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+
+  const handleExportPdf = useCallback(async () => {
+    const root = meetingPdfExportRef.current;
+    if (!root) {
+      toast.error("PDF export unavailable", { description: "Reload the page and try again." });
+      return;
+    }
+    setPdfExportBusy(true);
+    try {
+      if (pdfStampRef.current) {
+        pdfStampRef.current.textContent = new Intl.DateTimeFormat(undefined, {
+          dateStyle: "long",
+          timeStyle: "short",
+        }).format(new Date());
+      }
+      await flushPaint();
+      await exportMeetingMinutesPdfFromElement(root, fileMeta?.name ?? "Meeting minutes");
+      toast.success("PDF downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not generate PDF", {
+        description: "Try TXT export or shorten the summary and retry.",
+      });
+    } finally {
+      setPdfExportBusy(false);
+    }
+  }, [fileMeta?.name]);
+
+  const handleExportTxt = useCallback(() => {
+    try {
+      exportMeetingMinutesTxt(summaryText ?? "", fileMeta?.name ?? "Meeting minutes");
+      toast.success("Text file downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not download text file");
+    }
+  }, [fileMeta?.name, summaryText]);
+
   const errorMessage = mutation.error
     ? (() => {
         const err = mutation.error as { response?: { status?: number; data?: { message?: string } } };
@@ -244,13 +310,43 @@ export function MeetingPlayground() {
     : null;
 
   return (
-    <div className="w-full min-w-0 space-y-5 sm:space-y-6">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-6">
+      {/* Off-screen DOM for PDF capture (fonts + Markdown match UI; works while JSON tab is active). */}
+      {responseFetched ? (
+        <div
+          ref={meetingPdfExportRef}
+          data-meeting-pdf-export-root
+          className="fixed top-0 left-[-9999px] z-9999 w-[720px] bg-white px-10 pb-14 pt-10 text-[15px] leading-relaxed text-neutral-900 shadow-none"
+          aria-hidden
+        >
+          <header className="mb-10 border-b border-neutral-200 pb-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+              Hasab AI
+            </p>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950">{pdfHeadingTitle}</h2>
+            <p className="mt-2 min-h-4 text-xs text-neutral-500">
+              <span ref={pdfStampRef} />
+            </p>
+          </header>
+          <div
+            className={`max-w-none text-neutral-900 [&_a]:text-violet-700 [&_a]:underline [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-neutral-900 [&_h1]:mt-8 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-5 [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_pre]:rounded-lg [&_pre]:bg-neutral-100 [&_pre]:p-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-neutral-200 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-200 [&_th]:bg-neutral-100 [&_th]:p-2 [&_th]:text-left [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6`}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{summaryMdBody}</ReactMarkdown>
+          </div>
+        </div>
+      ) : null}
+
       {!responseFetched ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <div className="grid w-full max-w-xs gap-1.5 sm:ml-auto">
-            <Label className="text-xs font-medium text-muted-foreground">Summary language</Label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
+          <div className="grid w-full gap-1.5 sm:ml-auto sm:max-w-xs">
+            <Label htmlFor="meeting-summary-lang" className="text-xs font-medium text-muted-foreground">
+              Summary language
+            </Label>
             <Select value={language} onValueChange={setLanguage} disabled={busy}>
-              <SelectTrigger className="h-10 w-full cursor-pointer bg-background">
+              <SelectTrigger
+                id="meeting-summary-lang"
+                className="h-11 w-full cursor-pointer touch-manipulation bg-background sm:h-10"
+              >
                 <SelectValue placeholder="Language" />
               </SelectTrigger>
               <SelectContent>
@@ -265,16 +361,16 @@ export function MeetingPlayground() {
         </div>
       ) : null}
 
-      <div className="w-full min-w-0 rounded-xl border border-border bg-card shadow-sm">
+      <div className="w-full min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm sm:rounded-xl">
         {!responseFetched ? (
           <Card className="border-none shadow-none">
-            <CardContent className="relative min-h-[min(60vh,520px)] p-0">
+            <CardContent className="relative min-h-[min(52vh,480px)] sm:min-h-[min(60vh,520px)] p-0">
               {!fileMeta ? (
-                <div className="flex flex-col items-center justify-center gap-6 px-6 py-16 text-center">
-                  <div className="flex size-20 items-center justify-center rounded-full bg-foreground text-background">
-                    <AudioLines className="size-10" aria-hidden />
+                <div className="flex flex-col items-center justify-center gap-5 px-4 py-12 text-center sm:gap-6 sm:px-6 sm:py-16">
+                  <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-foreground text-background sm:size-20">
+                    <AudioLines className="size-8 sm:size-10" aria-hidden />
                   </div>
-                  <div className="max-w-lg space-y-2">
+                  <div className="max-w-lg space-y-2 px-1">
                     {pickError ? (
                       <Alert variant="destructive" className="text-left">
                         <AlertCircle className="size-4" />
@@ -282,8 +378,10 @@ export function MeetingPlayground() {
                         <AlertDescription className="text-sm">{pickError}</AlertDescription>
                       </Alert>
                     ) : null}
-                    <CardTitle className="text-2xl font-semibold">Upload meeting audio</CardTitle>
-                    <CardDescription className="text-base">
+                    <CardTitle className="text-pretty text-xl font-semibold tracking-tight sm:text-2xl">
+                      Upload meeting audio
+                    </CardTitle>
+                    <CardDescription className="text-pretty text-sm sm:text-base">
                       We transcribe and summarize your recording into structured meeting minutes.
                     </CardDescription>
                     <p className="text-pretty text-xs text-muted-foreground sm:text-sm">
@@ -294,7 +392,7 @@ export function MeetingPlayground() {
                   <Button
                     type="button"
                     className={cn(
-                      "h-11 rounded-full px-8",
+                      "h-12 w-full max-w-xs touch-manipulation rounded-full px-8 sm:h-11 sm:w-auto",
                       "bg-linear-to-br from-[#7C20D0] to-[#D020C9] text-white shadow-md hover:opacity-92",
                     )}
                     onClick={() => fileInputRef.current?.click()}
@@ -311,13 +409,13 @@ export function MeetingPlayground() {
                   />
                 </div>
               ) : (
-                <div className="space-y-6 px-4 py-8 sm:px-8">
+                <div className="space-y-5 px-3 py-6 sm:space-y-6 sm:px-8 sm:py-8">
                   <div className="flex justify-end">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="rounded-full"
+                      className="size-11 shrink-0 touch-manipulation rounded-full sm:size-10"
                       disabled={busy}
                       onClick={handleReset}
                       aria-label="Clear selection"
@@ -334,14 +432,20 @@ export function MeetingPlayground() {
                     </Alert>
                   ) : null}
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <AudioLines className="size-5 shrink-0 text-primary" aria-hidden />
-                        <span className="truncate">{fileMeta.name}</span>
+                  <Card className="overflow-hidden">
+                    <CardHeader className="space-y-1">
+                      <CardTitle className="flex items-start gap-2 text-base leading-snug sm:items-center sm:text-lg">
+                        <AudioLines className="mt-0.5 size-5 shrink-0 text-primary sm:mt-0" aria-hidden />
+                        <span className="min-w-0 wrap-break-word font-semibold sm:font-medium">
+                          {fileMeta.name}
+                        </span>
                       </CardTitle>
-                      <CardDescription>
-                        {fileMeta.size} · {fileMeta.type}
+                      <CardDescription className="flex flex-wrap gap-x-2 gap-y-1 text-xs sm:text-sm">
+                        <span>{fileMeta.size}</span>
+                        <span className="text-muted-foreground/70" aria-hidden>
+                          ·
+                        </span>
+                        <span className="break-all">{fileMeta.type}</span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -353,11 +457,11 @@ export function MeetingPlayground() {
                     </CardContent>
                   </Card>
 
-                  <div className="flex justify-center">
+                  <div className="flex justify-center px-1">
                     <Button
                       type="button"
                       className={cn(
-                        "h-11 min-w-48 rounded-full",
+                        "h-12 w-full max-w-md touch-manipulation rounded-full sm:h-11 sm:min-w-48 sm:max-w-none sm:w-auto",
                         "bg-linear-to-br from-[#7C20D0] to-[#D020C9] text-white shadow-md hover:opacity-92",
                       )}
                       disabled={!localFile || busy}
@@ -377,13 +481,15 @@ export function MeetingPlayground() {
               )}
 
               {showUploadOverlay ? (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-xl border border-border/60 bg-background/85 px-6 backdrop-blur-sm">
-                  <Loader2 className="size-10 animate-spin text-primary" />
-                  <p className="text-sm font-medium">Uploading to secure storage…</p>
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg border border-border/60 bg-background/90 px-4 backdrop-blur-sm sm:rounded-xl sm:bg-background/85 sm:px-6">
+                  <Loader2 className="size-9 animate-spin text-primary sm:size-10" />
+                  <p className="text-center text-sm font-medium">Uploading to secure storage…</p>
                   {fileMeta?.name ? (
-                    <p className="max-w-xs truncate text-xs text-muted-foreground">{fileMeta.name}</p>
+                    <p className="max-w-[min(100%,18rem)] wrap-break-word text-center text-xs text-muted-foreground sm:max-w-xs">
+                      {fileMeta.name}
+                    </p>
                   ) : null}
-                  <div className="h-2 w-64 max-w-[80vw] overflow-hidden rounded-full bg-muted">
+                  <div className="h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted sm:w-64">
                     <div
                       className="h-full rounded-full bg-primary transition-[width] duration-300"
                       style={{ width: `${uploadPct}%` }}
@@ -394,10 +500,10 @@ export function MeetingPlayground() {
               ) : null}
 
               {showProcessOverlay ? (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl border border-border/60 bg-background/85 px-6 backdrop-blur-sm">
-                  <Loader2 className="size-10 animate-spin text-primary" />
-                  <p className="text-sm font-medium">Transcribing & summarizing…</p>
-                  <p className="max-w-sm text-center text-xs text-muted-foreground">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg border border-border/60 bg-background/90 px-4 backdrop-blur-sm sm:rounded-xl sm:bg-background/85 sm:px-6">
+                  <Loader2 className="size-9 animate-spin text-primary sm:size-10" />
+                  <p className="text-center text-sm font-medium">Transcribing & summarizing…</p>
+                  <p className="max-w-sm text-pretty px-1 text-center text-xs leading-relaxed text-muted-foreground">
                     Long recordings can take several minutes. You can leave this page open.
                   </p>
                 </div>
@@ -408,45 +514,75 @@ export function MeetingPlayground() {
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v === "json" ? "json" : "summary")}
-            className="w-full min-w-0"
+            className="flex w-full min-w-0 flex-col gap-0"
           >
-            <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 md:px-5">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-10 gap-2 sm:h-9"
+                className="-ml-2 h-11 shrink-0 justify-start gap-2 touch-manipulation px-3 sm:ml-0 sm:h-9 sm:justify-center sm:px-2"
                 onClick={handleReset}
               >
                 <ArrowLeft className="size-4 shrink-0" />
                 New meeting
               </Button>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                <TabsList className="grid h-10 w-full grid-cols-2 rounded-lg bg-muted/80 p-0.5 sm:flex sm:h-9 sm:w-auto">
-                  <TabsTrigger value="summary" className="rounded-md px-3 text-sm">
-                    Summary
+              <div className="flex min-w-0 flex-1 flex-row flex-nowrap items-center gap-2 sm:flex-wrap sm:justify-end">
+                <TabsList className="grid h-11 min-h-11 min-w-0 flex-1 grid-cols-2 rounded-lg bg-muted/80 p-0.5 touch-manipulation sm:h-9 sm:w-auto sm:flex-initial sm:max-w-full">
+                  <TabsTrigger
+                    value="summary"
+                    className="rounded-md px-2 text-sm touch-manipulation sm:px-3"
+                    aria-label="Summary"
+                  >
+                    <span >Summary</span>
                   </TabsTrigger>
-                  <TabsTrigger value="json" className="rounded-md px-3 text-sm">
-                    JSON
+                  <TabsTrigger
+                    value="json"
+                    className="rounded-md px-2 text-sm touch-manipulation sm:px-3"
+                    aria-label="JSON"
+                  >
+                    <span>JSON</span>
                   </TabsTrigger>
                 </TabsList>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" className="h-10 gap-2 sm:h-9">
-                      <Download className="size-4 shrink-0" />
-                      Export
-                      <ChevronDown className="size-4 shrink-0 opacity-60" aria-hidden />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label="Export"
+                      className="inline-flex size-11 shrink-0 touch-manipulation items-center justify-center gap-0 p-0 sm:h-9 sm:w-auto sm:justify-center sm:gap-2 sm:px-3"
+                    >
+                      <Download className="size-4 shrink-0 sm:hidden" aria-hidden />
+                      <span className="hidden font-medium sm:inline">Export</span>
+                      <ChevronDown className="hidden size-4 shrink-0 opacity-60 sm:inline" aria-hidden />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() => exportMeetingMinutesPdf(summaryText, fileMeta?.name ?? "Meeting minutes")}
+                      disabled={pdfExportBusy}
+                      className="cursor-pointer gap-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        void handleExportPdf();
+                      }}
                     >
+                      {pdfExportBusy ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                      ) : (
+                        <Download className="size-4 shrink-0 opacity-70" aria-hidden />
+                      )}
                       Download PDF
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => exportMeetingMinutesTxt(summaryText, fileMeta?.name ?? "Meeting minutes")}
+                      disabled={pdfExportBusy}
+                      className="cursor-pointer gap-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleExportTxt();
+                      }}
                     >
+                      <Download className="size-4 shrink-0 opacity-70" aria-hidden />
                       Download TXT
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -454,48 +590,78 @@ export function MeetingPlayground() {
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 md:p-5">
-              <p className="mb-4 text-pretty text-sm text-muted-foreground">
+            <div className="min-w-0 px-3 py-4 pb-[max(1.5rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] pt-4 sm:p-4 sm:pb-4 md:p-5">
+              <p className="mb-4 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-sm">
                 {successMessage ?? "Here is what we extracted from your recording."}
               </p>
 
-              <TabsContent value="summary" className="mt-0 space-y-6 outline-none">
-                <Card>
-                  <CardHeader>
+              <TabsContent value="summary" className="mt-0 min-w-0 space-y-4 outline-none sm:space-y-6">
+                <Card className="overflow-hidden">
+                  <CardHeader className="space-y-1 px-4 pt-5 pb-3 sm:px-6 sm:pb-4">
                     <CardTitle className="text-base">Original audio</CardTitle>
-                    <CardDescription className="flex flex-wrap gap-2">
-                      <span>{fileMeta?.name}</span>
-                      <span aria-hidden>·</span>
+                    <CardDescription className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-0 sm:text-sm">
+                      <span className="min-w-0 wrap-break-word font-medium text-foreground">{fileMeta?.name}</span>
+                      <span className="hidden text-muted-foreground/70 sm:inline" aria-hidden>
+                        ·
+                      </span>
                       <span>{fileMeta?.size}</span>
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-4 pb-5 sm:px-6">
                     {playableUrl ? (
-                      <TTSAudioPlayer src={playableUrl} className="w-full" />
+                      <TTSAudioPlayer src={playableUrl} className="w-full min-w-0" />
                     ) : (
                       <p className="text-sm text-muted-foreground">Audio link expired or unavailable.</p>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
+                <Card className="overflow-hidden">
+                  <CardHeader className="px-4 pt-5 pb-2 sm:px-6">
                     <CardTitle className="text-base">Meeting summary</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="max-w-none text-base leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_h1]:mt-6 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:text-left [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {summaryText?.trim() ? summaryText : "_No summary text returned._"}
-                      </ReactMarkdown>
+                  <CardContent className="px-3 pb-5 sm:px-6">
+                    <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+                      <div className={`text-foreground ${SUMMARY_MARKDOWN_CLASS}`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{summaryMdBody}</ReactMarkdown>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="json" className="mt-0 outline-none">
-                <pre className="max-h-[min(70vh,640px)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs leading-relaxed">
-                  {jsonPretty}
-                </pre>
+              <TabsContent value="json" className="mt-0 min-w-0 space-y-4 outline-none sm:space-y-6">
+                <Card className="overflow-hidden">
+                  <CardHeader className="space-y-1 px-4 pt-5 pb-3 sm:px-6 sm:pb-4">
+                    <CardTitle className="text-base">Raw JSON</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground sm:text-sm">
+                      Full structured payload from processing.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-5 sm:px-6">
+                    <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+                      <div
+                        className={cn(
+                          "max-h-[min(62svh,580px)] overflow-auto overscroll-contain rounded-md border border-border bg-muted/35 shadow-inner [-webkit-overflow-scrolling:touch]",
+                          "sm:max-h-[min(72vh,680px)]",
+                        )}
+                      >
+                        <pre
+                          className={cn(
+                            "block min-w-full w-max whitespace-pre px-3 py-3 pb-[max(1.25rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))]",
+                            "font-mono text-[12px] leading-relaxed tracking-normal text-foreground antialiased",
+                            "sm:px-4 sm:py-4 sm:pb-4 sm:text-[13px] sm:leading-relaxed",
+                          )}
+                          tabIndex={0}
+                          role="region"
+                          aria-label="Raw JSON response from meeting processing"
+                        >
+                          {jsonPretty}
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </div>
           </Tabs>

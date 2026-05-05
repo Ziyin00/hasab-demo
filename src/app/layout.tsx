@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import QueryProvider from "@/components/providers/query-provider";
 
 import { AuthInitializer } from "@/components/providers/auth-initializer";
+import { TranscriptionJobToast } from "@/components/providers/TranscriptionJobToast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
               <AuthInitializer />
               {children}
               <Toaster />
+              <TranscriptionJobToast />
             </TooltipProvider>
           </QueryProvider>
         </ThemeProvider>

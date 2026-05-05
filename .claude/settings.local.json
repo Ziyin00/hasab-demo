@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/HP/AppData/Local/Temp/**)"
+      "Read(//c/Users/HP/AppData/Local/Temp/**)",
+      "Bash(git stash *)",
+      "Bash(git pull *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings"
