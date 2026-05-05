@@ -42,31 +42,64 @@ export const useTranscription = () => {
     setAudioMeta,
     setIsProcessing,
     setError,
+    setJob,
+    updateJobProgress,
   } = useTranscriptionStore();
 
   const mutation = useMutation({
     mutationFn: async (request: TranscriptionRequest) => {
-      const { file, language, style, burnIn, diarization, summarize, translate, targetLanguage } = request;
+      const { file } = request;
+
+      // Phase 1: upload to S3 + submit to backend
+      setJob({ phase: "uploading", fileName: file.name, progress: 0, audioId: null, error: null });
+
+      let submitResult: Awaited<ReturnType<typeof transcriptionApi.uploadAndSubmit>>;
       try {
-        const { normalized, audioId } = await transcriptionApi.submitUploadThenPoll({
-          file,
-          language,
-          style,
-          burnIn,
-          diarization,
-          summarize,
-          translate,
-          targetLanguage,
+        submitResult = await transcriptionApi.uploadAndSubmit(request, (pct) => {
+          updateJobProgress(pct);
+        });
+      } catch (uploadErr: any) {
+        const msg =
+          uploadErr?.response?.status === 402
+            ? "Insufficient balance. Please top up your account."
+            : uploadErr?.response?.data?.message ?? uploadErr?.message ?? "Upload failed";
+        setJob({ phase: "error", fileName: file.name, progress: 0, audioId: null, error: msg });
+        throw uploadErr;
+      }
+
+      // Phase 2: backend is processing — polling starts (continues even if user navigates away)
+      const { audioId, ts, dz, wantsWords, translationRequested, summaryRequested, initialPayload } =
+        submitResult;
+      setJob({ phase: "processing", fileName: file.name, progress: 100, audioId, error: null });
+
+      try {
+        const { normalized } = await transcriptionApi.pollForResult(audioId, {
+          ts,
+          dz,
+          wantsWords,
+          translationRequested,
+          summaryRequested,
+          initialPayload,
         });
         const merged = mergeNormalizedWithCache(audioId, normalized);
         rememberFromNormalized(audioId, merged);
+        setJob({ phase: "done", fileName: file.name, progress: 100, audioId, error: null });
         return { mode: "primary" as const, audioId, normalized: merged };
       } catch (primaryError: any) {
         if (primaryError?.message === "POLL_TIMEOUT") {
+          setJob({
+            phase: "error",
+            fileName: file.name,
+            progress: 100,
+            audioId,
+            error: "Transcription is taking too long. Please retry.",
+          });
           throw primaryError;
         }
+        // Non-timeout error — fall through to subtitle fallback
       }
 
+      // Subtitle fallback (re-uploads the file)
       const fallback = await transcriptionApi.subtitleFallback(request);
       const payload = fallback.data;
       const srt =
@@ -79,9 +112,17 @@ export const useTranscription = () => {
         (typeof payload === "string" ? payload : "");
 
       if (!srt || typeof srt !== "string") {
+        setJob({
+          phase: "error",
+          fileName: file.name,
+          progress: 100,
+          audioId: null,
+          error: "Could not process audio",
+        });
         throw new Error("EMPTY_TRANSCRIPT");
       }
 
+      setJob({ phase: "done", fileName: file.name, progress: 100, audioId: null, error: null });
       return {
         mode: "fallback" as const,
         srt,
@@ -116,7 +157,6 @@ export const useTranscription = () => {
         setLastSrt(result.srt);
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.transcription.list });
-      toast.success("Transcription generated successfully");
     },
     onError: (error: any) => {
       const status = error?.response?.status;
@@ -135,6 +175,11 @@ export const useTranscription = () => {
               "Failed to process transcription");
       setError(message);
       toast.error(message);
+      // Ensure job reflects error if mutationFn didn't already set it
+      const currentJob = useTranscriptionStore.getState().job;
+      if (currentJob && currentJob.phase !== "error") {
+        setJob({ ...currentJob, phase: "error", error: message });
+      }
     },
     onSettled: () => {
       setIsProcessing(false);

@@ -30,10 +30,14 @@ function getApiBaseUrl(): string {
   return fromEnv.endsWith("/") ? fromEnv : `${fromEnv}/`;
 }
 
-async function uploadToStorage(file: File): Promise<{ url: string; key: string; uuid: string }> {
+async function uploadToStorage(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<{ url: string; key: string; uuid: string }> {
   const Vapor = (await import("laravel-vapor")).default;
   const result = await Vapor.store(file, {
     baseURL: getApiBaseUrl(),
+    ...(onProgress ? { progress: (p: number) => onProgress(Math.round(p * 100)) } : {}),
   });
   return {
     url: String(result.url ?? ""),
@@ -42,22 +46,17 @@ async function uploadToStorage(file: File): Promise<{ url: string; key: string; 
   };
 }
 
-async function buildUploadMetadata(input: TranscriptionRequest) {
-  const uploadData = await uploadToStorage(input.file);
+async function buildUploadMetadata(
+  input: TranscriptionRequest,
+  onProgress?: (pct: number) => void
+) {
+  const uploadData = await uploadToStorage(input.file, onProgress);
   const formData = new FormData();
-  /** Backend rejects unknown values (including `"auto"`). Omit = auto-detect. */
   const sourceCode = coerceApiLanguageCode(input.language);
   const translating = flagTruthy(input.translate);
   const targetTrim = String(input.targetLanguage ?? "").trim();
   const targetCode = targetTrim ? coerceApiLanguageCode(targetTrim) ?? null : null;
 
-  /**
-   * Match upload contract used by the transcription service:
-   * - When **not** translating: `language` / `source_language` = optional transcript language hint (same code).
-   * - When translating: **`language` = target locale** (same as legacy client `metaObj.language`), optional
-   *   **`source_language` = ASR/source hint only** when user picked one. Still send **`target_language`**
-   *   for backends that keyed off that field.
-   */
   formData.append("translate", translating ? "true" : "false");
   formData.append("summarize", flagTruthy(input.summarize) ? "true" : "false");
   if (translating) {
@@ -84,10 +83,22 @@ async function buildUploadMetadata(input: TranscriptionRequest) {
   return formData;
 }
 
+export interface UploadSubmitResult {
+  audioId: string;
+  ts: string;
+  dz: string;
+  wantsWords: boolean;
+  translationRequested: boolean;
+  summaryRequested: boolean;
+  initialPayload: unknown;
+}
+
 export const transcriptionApi = {
-  submitUploadThenPoll: async (
-    input: TranscriptionRequest
-  ): Promise<{ normalized: NormalizedTranscriptionPayload | null; audioId: string }> => {
+  /** Phase 1: upload file to S3 + submit job to backend. Returns audioId for polling. */
+  uploadAndSubmit: async (
+    input: TranscriptionRequest,
+    onUploadProgress?: (pct: number) => void
+  ): Promise<UploadSubmitResult> => {
     const ts = "true";
     const dz = input.diarization ? "true" : "false";
     const wantsWords = flagTruthy(ts) || flagTruthy(dz);
@@ -96,7 +107,7 @@ export const transcriptionApi = {
       ? `/upload-audio?${query.toString()}`
       : `/upload-audio/async?${query.toString()}`;
 
-    const formData = await buildUploadMetadata(input);
+    const formData = await buildUploadMetadata(input, onUploadProgress);
     formData.append("timestamp", ts);
     formData.append("diarize", dz);
     if (wantsWords) formData.append("word_timestamps", "true");
@@ -112,7 +123,31 @@ export const transcriptionApi = {
     const translationRequested =
       flagTruthy(input.translate) && String(input.targetLanguage ?? "").trim().length > 0;
     const summaryRequested = flagTruthy(input.summarize);
-    /** Extra polls after transcript is ready — translation/summary often land in a second pass. */
+
+    const initialPayload =
+      unwrapAudioResource(uploadResponse.data) ??
+      uploadResponse.data?.data ??
+      uploadResponse.data?.audio ??
+      (uploadResponse.data && typeof uploadResponse.data === "object"
+        ? uploadResponse.data
+        : null);
+
+    return { audioId, ts, dz, wantsWords, translationRequested, summaryRequested, initialPayload };
+  },
+
+  /** Phase 2: poll until transcript is ready. Runs in the background — continues if user navigates away. */
+  pollForResult: async (
+    audioId: string,
+    opts: {
+      ts: string;
+      dz: string;
+      wantsWords: boolean;
+      translationRequested: boolean;
+      summaryRequested: boolean;
+      initialPayload?: unknown;
+    }
+  ): Promise<{ normalized: NormalizedTranscriptionPayload | null; audioId: string }> => {
+    const { ts, dz, wantsWords, translationRequested, summaryRequested, initialPayload } = opts;
     const MAX_OPTIONAL_FIELD_STALL_POLLS = 72;
 
     const baseTranscriptReady = (n: NormalizedTranscriptionPayload | null) => {
@@ -128,13 +163,7 @@ export const transcriptionApi = {
       return trOk && sumOk;
     };
 
-    const payloadForNormalization =
-      unwrapAudioResource(uploadResponse.data) ??
-      uploadResponse.data?.data ??
-      uploadResponse.data?.audio ??
-      (uploadResponse.data && typeof uploadResponse.data === "object" ? uploadResponse.data : null);
-
-    let normalized = normalizeTranscriptionPayload(payloadForNormalization);
+    let normalized = initialPayload ? normalizeTranscriptionPayload(initialPayload) : null;
     let optionalFieldStallPolls = 0;
 
     const maybeFinish = (): { normalized: NormalizedTranscriptionPayload; audioId: string } | null => {
@@ -165,6 +194,14 @@ export const transcriptionApi = {
     }
 
     throw new Error("POLL_TIMEOUT");
+  },
+
+  /** Convenience: upload + submit + poll in one call (backward compat). */
+  submitUploadThenPoll: async (
+    input: TranscriptionRequest
+  ): Promise<{ normalized: NormalizedTranscriptionPayload | null; audioId: string }> => {
+    const submitResult = await transcriptionApi.uploadAndSubmit(input);
+    return transcriptionApi.pollForResult(submitResult.audioId, submitResult);
   },
 
   subtitleFallback: async (input: TranscriptionRequest) => {
