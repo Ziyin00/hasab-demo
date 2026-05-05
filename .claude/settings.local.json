@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/HP/AppData/Local/Temp/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings"
     ]
   }
 }

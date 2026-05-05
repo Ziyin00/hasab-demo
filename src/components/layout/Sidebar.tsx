@@ -241,13 +241,13 @@ export function AppSidebar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile" className="flex items-center gap-2 w-full">
+                  <Link href="/dashboard/settings?tab=account" className="flex items-center gap-2 w-full">
                     <User className="size-4" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/billing" className="flex items-center gap-2 w-full">
+                  <Link href="/dashboard/settings?tab=billing" className="flex items-center gap-2 w-full">
                     <CreditCard className="size-4" />
                     <span>Billing</span>
                   </Link>
