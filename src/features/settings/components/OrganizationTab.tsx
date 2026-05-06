@@ -45,7 +45,7 @@ function Field({
 export function OrganizationTab() {
   const { data: profile, isLoading } = useProfile();
   const org = profile?.organization as Organization | null | undefined;
-  const { mutate: updateOrg, isPending } = useUpdateOrganization(org?.id ?? 0);
+  const { mutate: updateOrg, isPending } = useUpdateOrganization();
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -54,6 +54,7 @@ export function OrganizationTab() {
     phone_number: "",
     address: "",
     city: "",
+    state: "",
     country: "",
     postal_code: "",
     website: "",
@@ -67,6 +68,7 @@ export function OrganizationTab() {
         phone_number: org.phone_number ?? "",
         address: org.address ?? "",
         city: org.city ?? "",
+        state: org.state ?? "",
         country: org.country ?? "",
         postal_code: org.postal_code ?? "",
         website: org.website ?? "",
@@ -96,6 +98,7 @@ export function OrganizationTab() {
         phone_number: org.phone_number ?? "",
         address: org.address ?? "",
         city: org.city ?? "",
+        state: org.state ?? "",
         country: org.country ?? "",
         postal_code: org.postal_code ?? "",
         website: org.website ?? "",
@@ -176,6 +179,7 @@ export function OrganizationTab() {
                   ["website", "Website"],
                   ["address", "Address"],
                   ["city", "City"],
+                  ["state", "State"],
                   ["country", "Country"],
                   ["postal_code", "Postal code"],
                 ] as [keyof typeof form, string][]
@@ -200,6 +204,7 @@ export function OrganizationTab() {
               <div className="px-6">
                 <Field label="Address" value={form.address} editing={false} onChange={set("address")} />
                 <Field label="City" value={form.city} editing={false} onChange={set("city")} />
+                <Field label="State" value={form.state} editing={false} onChange={set("state")} />
                 <Field label="Country" value={form.country} editing={false} onChange={set("country")} />
                 <Field label="Postal code" value={form.postal_code} editing={false} onChange={set("postal_code")} />
               </div>

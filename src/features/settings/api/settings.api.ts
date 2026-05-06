@@ -19,6 +19,7 @@ export interface UpdateOrganizationPayload {
   phone_number: string;
   address: string;
   city: string;
+  state: string;
   country: string;
   postal_code: string;
   website: string;
@@ -38,8 +39,10 @@ export const settingsApi = {
   changePassword: (payload: ChangePasswordPayload) =>
     apiClient.put("/profile/password", payload),
 
-  updateOrganization: (id: number, payload: UpdateOrganizationPayload) =>
-    apiClient.put(`/organizations/${id}`, payload),
+  updateOrganization: (payload: UpdateOrganizationPayload) =>
+    apiClient
+      .post<ProfileResponse>("/profile", { organization: payload })
+      .then((r) => r.data.data.user),
 
   getTokenHistory: (page: number) =>
     apiClient

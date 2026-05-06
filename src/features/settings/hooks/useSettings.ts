@@ -50,11 +50,11 @@ export function useBuyTokens() {
   });
 }
 
-export function useUpdateOrganization(orgId: number) {
+export function useUpdateOrganization() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: UpdateOrganizationPayload) =>
-      settingsApi.updateOrganization(orgId, payload),
+      settingsApi.updateOrganization(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
