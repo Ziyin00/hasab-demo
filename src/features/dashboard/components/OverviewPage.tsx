@@ -5,6 +5,7 @@ import { Mic, Video, Users, FileText, Clock, Languages, Volume2, ArrowRight } fr
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useAuthStore } from "@/store/auth.store";
+import { RecentActivity } from "./RecentActivity";
 
 function fmt(n: number, decimals = 0) {
   return n.toLocaleString("en-US", { maximumFractionDigits: decimals });
@@ -208,6 +209,9 @@ export function OverviewPage() {
           ))}
         </div>
       </div>
+
+      {/* Recent activity */}
+      <RecentActivity />
 
       {/* Bottom section: breakdown + videos */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
