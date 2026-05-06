@@ -51,7 +51,7 @@ export default function DashboardLayout({
               </BreadcrumbList>
             </Breadcrumb>
           </header>
-          <main className="p-6 flex-1">
+          <main className="p-6 flex-1 bg-background">
             {children}
           </main>
         </div>
