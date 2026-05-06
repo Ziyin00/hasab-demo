@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { Mic, Video, Users, FileText, Clock, Languages, Volume2, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
@@ -63,13 +64,17 @@ function BreakdownRow({
 export function OverviewPage() {
   const { data, isLoading } = useAnalytics();
   const user = useAuthStore((s) => s.user);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const today = mounted
+    ? new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
 
   return (
     <div className="space-y-6">
@@ -77,7 +82,7 @@ export function OverviewPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold">
-            Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            Welcome{mounted && user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{today}</p>
         </div>
@@ -154,7 +159,7 @@ export function OverviewPage() {
       {/* Action items */}
       <div>
         <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
-        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${user?.organization ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${mounted && user?.organization ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
           {[
             {
               href: "/dashboard/playground/transcription",
@@ -177,7 +182,7 @@ export function OverviewPage() {
               desc: "Generate natural-sounding speech from text",
               color: "bg-amber-500/10 text-amber-500",
             },
-            ...(user?.organization
+            ...(mounted && user?.organization
               ? [
                   {
                     href: "/dashboard/playground/meeting-minutes",

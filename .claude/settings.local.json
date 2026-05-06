@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/HP/AppData/Local/Temp/**)"
+      "Read(//c/Users/HP/AppData/Local/Temp/**)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 13496 /F)",
+      "PowerShell(Stop-Process -Id 13496 -Force)",
+      "Bash(pnpm info *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings"
