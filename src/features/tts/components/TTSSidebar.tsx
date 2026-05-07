@@ -6,7 +6,7 @@ import { TTSHistoryPanel } from "./TTSHistoryPanel";
 
 export function TTSSidebar() {
   return (
-    <Tabs defaultValue="settings" className="flex flex-col h-full border-l">
+    <Tabs defaultValue="settings" className="flex flex-col h-full">
       <TabsList
         variant="line"
         className="w-full rounded-none border-b h-12 bg-transparent px-4 justify-start gap-4"
