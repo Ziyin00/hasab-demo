@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/select";
 
 export const LANGUAGE_NAMES: Record<string, string> = {
-  amh: "Amharic (አማርኛ)",
-  orm: "Oromo (Afaan Oromoo)",
+  am: "Amharic (አማርኛ)",
+  om: "Oromo (Afaan Oromoo)",
+  en: "English",
+  tig: "Tigrinya (ትግርኛ)",
 };
 
 export function TTSVoiceSelector() {

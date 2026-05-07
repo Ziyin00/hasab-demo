@@ -26,14 +26,14 @@ export default function DashboardLayout({
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1">
-          <header className="h-16 flex items-center px-6 sticky top-0  z-10 gap-4">
+          <header className="h-16 flex items-center px-6 sticky top-0  z-10 gap-4 bg-background">
             <SidebarTrigger className="-ml-1 md:hidden" />
             <Breadcrumb>
               <BreadcrumbList>
                 {pathSegments.map((segment, index) => {
                   const href = `/${pathSegments.slice(0, index + 1).join("/")}`;
                   const isLast = index === pathSegments.length - 1;
-                  const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+                  const label = segment.replace(/-/g, " ");
 
                   return (
                     <React.Fragment key={href}>

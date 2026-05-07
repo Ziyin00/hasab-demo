@@ -6,6 +6,12 @@ import type {
   TTSHistoryParams,
 } from "../types/tts.types";
 
+const LANGUAGE_CODE_MAP: Record<string, string> = {
+  tir: "tig",
+};
+
+const normalizeLanguage = (lang: string) => LANGUAGE_CODE_MAP[lang] ?? lang;
+
 export const ttsApi = {
   getSpeakers: async (language?: string): Promise<TTSSpeakersResponse> => {
     const params = language ? { language } : {};
@@ -16,7 +22,7 @@ export const ttsApi = {
   synthesize: async (text: string, language: string, speaker_name: string): Promise<Blob> => {
     const response = await apiClient.post(
       "/tts/synthesize",
-      { text, language, speaker_name },
+      { text, language: normalizeLanguage(language), speaker_name },
       { responseType: "blob" }
     );
     return response.data as Blob;

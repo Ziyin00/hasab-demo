@@ -2,8 +2,8 @@ import { create } from "zustand";
 import type { TTSHistoryRecord, TTSSpeakersResponse } from "@/features/tts/types/tts.types";
 
 const DEFAULT_SETTINGS = {
-  language: "amh",
-  speakerName: "Hanna",
+  language: "am",
+  speakerName: "Selam",
   speed: 1,
   pitch: 0,
   volume: 1,
@@ -53,7 +53,7 @@ export const useTTSStore = create<TTSState>((set, get) => ({
   setText: (text) => set({ text }),
 
   ...DEFAULT_SETTINGS,
-  setLanguage: (language) => set({ language, speakerName: "" }),
+  setLanguage: (language) => set({ language }),
   setSpeakerName: (speakerName) => set({ speakerName }),
   setSpeed: (speed) => set({ speed }),
   setPitch: (pitch) => set({ pitch }),

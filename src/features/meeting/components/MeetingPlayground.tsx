@@ -631,7 +631,7 @@ export function MeetingPlayground() {
               </TabsContent>
 
               <TabsContent value="json" className="mt-0 min-w-0 space-y-4 outline-none sm:space-y-6">
-                <Card className="overflow-hidden">
+                <Card className="min-w-0 overflow-hidden">
                   <CardHeader className="space-y-1 px-4 pt-5 pb-3 sm:px-6 sm:pb-4">
                     <CardTitle className="text-base">Raw JSON</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground sm:text-sm">
@@ -639,26 +639,24 @@ export function MeetingPlayground() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-3 pb-5 sm:px-6">
-                    <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 sm:mx-0 sm:overflow-visible sm:px-0">
-                      <div
+                    <div
+                      className={cn(
+                        "max-h-[min(62svh,580px)] overflow-y-auto overscroll-contain rounded-md border border-border bg-muted/35 shadow-inner [-webkit-overflow-scrolling:touch]",
+                        "sm:max-h-[min(72vh,680px)]",
+                      )}
+                    >
+                      <pre
                         className={cn(
-                          "max-h-[min(62svh,580px)] overflow-auto overscroll-contain rounded-md border border-border bg-muted/35 shadow-inner [-webkit-overflow-scrolling:touch]",
-                          "sm:max-h-[min(72vh,680px)]",
+                          "block min-w-0 w-full whitespace-pre-wrap break-words px-3 py-3 pb-[max(1.25rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))]",
+                          "font-mono text-[12px] leading-relaxed tracking-normal text-foreground antialiased",
+                          "sm:px-4 sm:py-4 sm:pb-4 sm:text-[13px] sm:leading-relaxed",
                         )}
+                        tabIndex={0}
+                        role="region"
+                        aria-label="Raw JSON response from meeting processing"
                       >
-                        <pre
-                          className={cn(
-                            "block min-w-full w-max whitespace-pre px-3 py-3 pb-[max(1.25rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))]",
-                            "font-mono text-[12px] leading-relaxed tracking-normal text-foreground antialiased",
-                            "sm:px-4 sm:py-4 sm:pb-4 sm:text-[13px] sm:leading-relaxed",
-                          )}
-                          tabIndex={0}
-                          role="region"
-                          aria-label="Raw JSON response from meeting processing"
-                        >
-                          {jsonPretty}
-                        </pre>
-                      </div>
+                        {jsonPretty}
+                      </pre>
                     </div>
                   </CardContent>
                 </Card>
