@@ -25,10 +25,9 @@ export const FileUploader = ({ name, label, accept }: FileUploaderProps) => {
 
   return (
     <div className="space-y-4 w-full">
-      <div 
-        className={`relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 transition-all ${
-          isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/20"
-        }`}
+      <div
+        className={`relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 transition-all ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/20"
+          }`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(e) => {
@@ -37,9 +36,9 @@ export const FileUploader = ({ name, label, accept }: FileUploaderProps) => {
           handleFile(e.dataTransfer.files);
         }}
       >
-        <input 
-          type="file" 
-          className="hidden" 
+        <input
+          type="file"
+          className="hidden"
           ref={inputRef}
           accept={accept?.join(",")}
           onChange={(e) => handleFile(e.target.files)}
@@ -51,9 +50,9 @@ export const FileUploader = ({ name, label, accept }: FileUploaderProps) => {
               <FileAudio className="w-10 h-10 text-primary" />
             </div>
             <p className="font-medium">{file.name}</p>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setValue(name, null)}
               className="text-destructive hover:text-destructive"
             >
