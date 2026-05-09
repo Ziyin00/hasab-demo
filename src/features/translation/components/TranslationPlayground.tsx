@@ -232,7 +232,7 @@ export function TranslationPlayground() {
                 )}
                 disabled={
                   mutation.isPending ||
-                  charCount > 2000 ||
+                  charCount > 10000 ||
                   !text ||
                   text.trim().length < 15 ||
                   !!formState.errors.targetLanguage ||
@@ -279,15 +279,15 @@ export function TranslationPlayground() {
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs sm:mt-3">
                 <p className="text-pretty text-muted-foreground">
-                  Minimum 15 characters. Maximum 2000 characters. Draft text is remembered for this browser session only.
+                  Minimum 15 characters. Maximum 10000 characters. Draft text is remembered for this browser session only.
                 </p>
                 <span
                   className={cn(
                     "font-medium shrink-0",
-                    charCount > 2000 ? "text-destructive" : "text-muted-foreground"
+                    charCount > 10000 ? "text-destructive" : "text-muted-foreground"
                   )}
                 >
-                  {charCount} / 2000 characters
+                  {charCount} / 10000 characters
                 </span>
               </div>
 
