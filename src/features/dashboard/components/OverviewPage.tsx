@@ -157,7 +157,7 @@ export function OverviewPage() {
       </div>
 
       {/* Action items */}
-      <div>
+      {/* <div>
         <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
         <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${mounted && user?.organization ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
           {[
@@ -213,7 +213,7 @@ export function OverviewPage() {
             </Link>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Recent activity */}
       <RecentActivity />
