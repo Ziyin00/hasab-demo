@@ -45,7 +45,7 @@ async function htmlToPDF(html: string, filename: string) {
     "padding:48px",
     "background:#ffffff",
     "color:#1a1a1a",
-    "font-family:system-ui,-apple-system,sans-serif",
+    "font-family:'Manrope',system-ui,-apple-system,sans-serif",
     "font-size:14px",
     "line-height:1.6",
     "box-sizing:border-box",
@@ -159,28 +159,26 @@ export async function downloadTranscriptionPDF(record: TranscriptionRecord) {
       </p>
     </div>
 
-    ${
-      record.transcription
-        ? `
+    ${record.transcription
+      ? `
     <div style="margin-bottom:24px">
       <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px">Transcription</p>
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px">
         <p style="margin:0;white-space:pre-wrap;font-size:14px">${record.transcription}</p>
       </div>
     </div>`
-        : ""
+      : ""
     }
 
-    ${
-      timestampRows
-        ? `
+    ${timestampRows
+      ? `
     <div style="padding-top:16px;border-top:1px solid #e5e7eb">
       <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px">Timestamps</p>
       <table style="width:100%;border-collapse:collapse">
         <tbody>${timestampRows}</tbody>
       </table>
     </div>`
-        : ""
+      : ""
     }
   `;
 
