@@ -6,7 +6,7 @@ export default function HistoryPage() {
   return (
     <div className="w-full space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">History</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">History</h1>
         <p className="text-sm text-muted-foreground mt-1">
           View and manage your previous jobs
         </p>

@@ -69,11 +69,11 @@ export function OverviewPage() {
 
   const today = mounted
     ? new Date().toLocaleDateString("en-US", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
     : "";
 
   return (
@@ -81,7 +81,7 @@ export function OverviewPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Welcome{mounted && user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{today}</p>
@@ -111,9 +111,9 @@ export function OverviewPage() {
               Last updated{" "}
               {data?.last_updated
                 ? new Date(data.last_updated).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
                 : "—"}
             </span>
           </div>
@@ -184,14 +184,14 @@ export function OverviewPage() {
             },
             ...(mounted && user?.organization
               ? [
-                  {
-                    href: "/dashboard/playground/meeting-minutes",
-                    icon: Users,
-                    title: "Meeting Minutes",
-                    desc: "Summarize meetings and extract action items",
-                    color: "bg-emerald-500/10 text-emerald-500",
-                  },
-                ]
+                {
+                  href: "/dashboard/playground/meeting-minutes",
+                  icon: Users,
+                  title: "Meeting Minutes",
+                  desc: "Summarize meetings and extract action items",
+                  color: "bg-emerald-500/10 text-emerald-500",
+                },
+              ]
               : []),
           ].map((item) => (
             <Link

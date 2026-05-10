@@ -112,7 +112,7 @@ export async function saveTranscriptPdf(title: string, body: string, filenameBas
   );
 
   const fontCss =
-    "https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap";
+    "https://fonts.googleapis.com/css2?family=Manrope:wght@300..800&display=swap";
 
   try {
     doc.setProperties({
@@ -149,66 +149,66 @@ export async function saveTranscriptPdf(title: string, body: string, filenameBas
     idoc.open();
     idoc.write(
       `<!DOCTYPE html><html><head><meta charset="utf-8"/>` +
-        `<link rel="preconnect" href="https://fonts.googleapis.com"/>` +
-        `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>` +
-        `<link rel="stylesheet" href="${fontCss}"/>` +
-        `<style>` +
-        `*,*::before,*::after{box-sizing:border-box;}` +
-        `html,body{margin:0;padding:0;background:rgb(255,255,255);}` +
-        `.wrap{` +
-        `width:${pxWidth}px;max-width:${pxWidth}px;` +
-        `margin:0 auto;padding:4px 4px 36px;` +
-        `-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;` +
-        `text-rendering:optimizeLegibility;` +
-        `font-family:"Noto Sans","Noto Sans Ethiopic","Segoe UI","Apple Color Emoji",system-ui,sans-serif;` +
-        `font-size:12.5px;line-height:1.72;` +
-        `font-weight:400;` +
-        `color:rgb(51,65,85);` +
-        `background:rgb(255,255,255);` +
-        `letter-spacing:0.013em;` +
-        `}` +
-        `.meta{` +
-        `display:block;` +
-        `font-size:10px;line-height:1.5;` +
-        `font-weight:500;` +
-        `color:rgb(148,163,184);` +
-        `margin:0 0 28px;padding:0;` +
-        `letter-spacing:0.045em;` +
-        `text-transform:uppercase;` +
-        `}` +
-        `h1.doc-title{` +
-        `font-family:inherit;` +
-        `font-size:20px;` +
-        `line-height:1.32;` +
-        `font-weight:600;` +
-        `color:rgb(15,23,39);` +
-        `margin:0 0 22px;padding:0 0 18px;` +
-        `letter-spacing:-0.028em;` +
-        `border-bottom:1px solid rgb(226,232,240);` +
-        `}` +
-        `.paras{` +
-        `display:flex;` +
-        `flex-direction:column;` +
-        `gap:18px;` +
-        `margin:0;` +
-        `padding:2px 0 0;` +
-        `unicode-bidi:plaintext;` +
-        `}` +
-        `p.para{` +
-        `margin:0;` +
-        `padding:0;` +
-        `line-height:1.74;` +
-        `word-break:break-word;` +
-        `overflow-wrap:break-word;` +
-        `color:rgb(51,65,85);` +
-        `}` +
-        `p.para--empty{font-style:italic;color:rgb(148,163,184);}` +
-        `</style></head><body>` +
-        `<div class="wrap">` +
-        `<div class="meta">${exportedMeta}</div>` +
-        `<h1 class="doc-title">${safeTitle}</h1>` +
-        `<div class="paras">${bodyInnerHtml}</div>` +
-        `</div></body></html>`
+      `<link rel="preconnect" href="https://fonts.googleapis.com"/>` +
+      `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>` +
+      `<link rel="stylesheet" href="${fontCss}"/>` +
+      `<style>` +
+      `*,*::before,*::after{box-sizing:border-box;}` +
+      `html,body{margin:0;padding:0;background:rgb(255,255,255);}` +
+      `.wrap{` +
+      `width:${pxWidth}px;max-width:${pxWidth}px;` +
+      `margin:0 auto;padding:4px 4px 36px;` +
+      `-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;` +
+      `text-rendering:optimizeLegibility;` +
+      `font-family:"Manrope","Noto Sans Ethiopic","Segoe UI","Apple Color Emoji",system-ui,sans-serif;` +
+      `font-size:12.5px;line-height:1.72;` +
+      `font-weight:400;` +
+      `color:rgb(51,65,85);` +
+      `background:rgb(255,255,255);` +
+      `letter-spacing:0.013em;` +
+      `}` +
+      `.meta{` +
+      `display:block;` +
+      `font-size:10px;line-height:1.5;` +
+      `font-weight:500;` +
+      `color:rgb(148,163,184);` +
+      `margin:0 0 28px;padding:0;` +
+      `letter-spacing:0.045em;` +
+      `text-transform:uppercase;` +
+      `}` +
+      `h1.doc-title{` +
+      `font-family:inherit;` +
+      `font-size:20px;` +
+      `line-height:1.32;` +
+      `font-weight:600;` +
+      `color:rgb(15,23,39);` +
+      `margin:0 0 22px;padding:0 0 18px;` +
+      `letter-spacing:-0.028em;` +
+      `border-bottom:1px solid rgb(226,232,240);` +
+      `}` +
+      `.paras{` +
+      `display:flex;` +
+      `flex-direction:column;` +
+      `gap:18px;` +
+      `margin:0;` +
+      `padding:2px 0 0;` +
+      `unicode-bidi:plaintext;` +
+      `}` +
+      `p.para{` +
+      `margin:0;` +
+      `padding:0;` +
+      `line-height:1.74;` +
+      `word-break:break-word;` +
+      `overflow-wrap:break-word;` +
+      `color:rgb(51,65,85);` +
+      `}` +
+      `p.para--empty{font-style:italic;color:rgb(148,163,184);}` +
+      `</style></head><body>` +
+      `<div class="wrap">` +
+      `<div class="meta">${exportedMeta}</div>` +
+      `<h1 class="doc-title">${safeTitle}</h1>` +
+      `<div class="paras">${bodyInnerHtml}</div>` +
+      `</div></body></html>`
     );
     idoc.close();
 

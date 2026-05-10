@@ -60,13 +60,13 @@ export function TranscriptionFeatureSelection() {
   return (
     <Fragment>
       <div className="flex w-full flex-col gap-2">
-        <div className="space-y-0.5">
+        {/* <div className="space-y-0.5">
           <Label htmlFor={summarizeId} className="text-sm leading-none font-medium">
             {summarizeMeta?.title ?? "Summarization"}
             <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
           </Label>
-          
-        </div>
+
+        </div> */}
         <label
           htmlFor={summarizeId}
           className={toggleRail}
@@ -86,10 +86,10 @@ export function TranscriptionFeatureSelection() {
       </div>
 
       <div className="flex w-full flex-col gap-2">
-        <Label htmlFor="translate-checkbox" className="text-sm leading-none font-medium">
+        {/* <Label htmlFor="translate-checkbox" className="text-sm leading-none font-medium">
           Translate
           <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-        </Label>
+        </Label> */}
         <label
           htmlFor="translate-checkbox"
           className={toggleRail}
@@ -101,13 +101,13 @@ export function TranscriptionFeatureSelection() {
             className="shrink-0"
           />
           <span className="min-w-0 flex-1 text-left text-sm text-foreground leading-snug">
-            Generate translation 
+            Generate translation
           </span>
         </label>
 
         {translate ? (
           <div className="space-y-2  pt-1">
-            
+
             <Select value={targetLanguage || ""} onValueChange={onTranslateLanguage}>
               <SelectTrigger
                 id="translate-language"
