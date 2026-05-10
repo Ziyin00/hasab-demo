@@ -1,4 +1,4 @@
-import { MeetingPlayground } from "@/features/meeting/components/MeetingPlayground";
+import { MeetingUploader } from "@/features/meeting/components/MeetingUploader";
 
 export default function MeetingMinutesPage() {
   return (
@@ -9,7 +9,7 @@ export default function MeetingMinutesPage() {
           Upload a recording and get a structured summary you can export or inspect as JSON.
         </p>
       </div>
-      <MeetingPlayground />
+      <MeetingUploader />
     </div>
   );
 }

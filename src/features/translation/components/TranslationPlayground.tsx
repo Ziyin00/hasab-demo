@@ -84,6 +84,8 @@ export function TranslationPlayground() {
   const sourceLanguage = watch("sourceLanguage");
   const targetLanguage = watch("targetLanguage");
 
+  const charCount = text?.length || 0;
+
   useEffect(() => {
     document.title = "Playground · Translation";
   }, []);
@@ -164,96 +166,103 @@ export function TranslationPlayground() {
       <div className="w-full min-w-0 rounded-xl border border-border bg-card shadow-sm">
         {!translationResult ? (
           <>
-          <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4 sm:gap-y-3 sm:px-4 lg:flex-nowrap">
-            <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:flex-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end sm:gap-2 md:gap-3">
-              <div className="grid min-w-0 w-full gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Source language</Label>
-                <Select
-                  value={sourceLanguage}
-                  onValueChange={(v) => setValue("sourceLanguage", v, { shouldDirty: true, shouldValidate: true })}
-                >
-                  <SelectTrigger className="h-11 w-full min-w-0 max-w-full cursor-pointer bg-background text-left text-sm md:h-10">
-                    <SelectValue placeholder="Source" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[min(320px,50dvh)] w-[calc(100vw-2rem)] max-w-none sm:max-w-[var(--radix-select-trigger-width)]">
-                    {TRANSLATION_SOURCE_LANGUAGES.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-center sm:justify-center sm:self-end sm:pb-0.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-11 shrink-0 touch-manipulation sm:size-10"
-                  disabled={sourceLanguage === "auto" || !targetLanguage}
-                  onClick={handleSwapLanguages}
-                  title="Swap languages"
-                >
-                  <ArrowLeftRight className="size-4" aria-hidden />
-                </Button>
-              </div>
-
-              <div className="grid min-w-0 w-full gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Target language</Label>
-                <Select
-                  value={targetLanguage || ""}
-                  onValueChange={(v) => setValue("targetLanguage", v, { shouldDirty: true, shouldValidate: true })}
-                >
-                  <SelectTrigger
-                    aria-invalid={Boolean(formState.errors.targetLanguage)}
-                    className="h-11 w-full min-w-0 max-w-full cursor-pointer bg-background text-left text-sm md:h-10"
+            <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4 sm:gap-y-3 sm:px-4 lg:flex-nowrap">
+              <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:flex-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end sm:gap-2 md:gap-3">
+                <div className="grid min-w-0 w-full gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Source language</Label>
+                  <Select
+                    value={sourceLanguage}
+                    onValueChange={(v) => setValue("sourceLanguage", v, { shouldDirty: true, shouldValidate: true })}
                   >
-                    <SelectValue placeholder="Select target language" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[min(320px,50dvh)] w-[calc(100vw-2rem)] max-w-none sm:max-w-[var(--radix-select-trigger-width)]">
-                    {TRANSLATION_TARGET_LANGUAGES.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger className="h-11 w-full min-w-0 max-w-full cursor-pointer bg-background text-left text-sm md:h-10">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="max-h-[min(320px,50dvh)] w-[calc(100vw-2rem)] max-w-none sm:max-w-[var(--radix-select-trigger-width)]">
+                      {TRANSLATION_SOURCE_LANGUAGES.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-center sm:justify-center sm:self-end sm:pb-0.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-11 shrink-0 touch-manipulation sm:size-10"
+                    disabled={sourceLanguage === "auto" || !targetLanguage}
+                    onClick={handleSwapLanguages}
+                    title="Swap languages"
+                  >
+                    <ArrowLeftRight className="size-4" aria-hidden />
+                  </Button>
+                </div>
+
+                <div className="grid min-w-0 w-full gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Target language</Label>
+                  <Select
+                    value={targetLanguage || ""}
+                    onValueChange={(v) => setValue("targetLanguage", v, { shouldDirty: true, shouldValidate: true })}
+                  >
+                    <SelectTrigger
+                      aria-invalid={Boolean(formState.errors.targetLanguage)}
+                      className="h-11 w-full min-w-0 max-w-full cursor-pointer bg-background text-left text-sm md:h-10"
+                    >
+                      <SelectValue placeholder="Select target language" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="max-h-[min(320px,50dvh)] w-[calc(100vw-2rem)] max-w-none sm:max-w-[var(--radix-select-trigger-width)]">
+                      {TRANSLATION_TARGET_LANGUAGES.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              <Button
+                type="button"
+                className={cn(
+                  "h-11 w-full shrink-0 touch-manipulation sm:ml-auto sm:w-auto sm:min-w-[8.75rem] lg:shrink-0",
+                  "bg-linear-to-br from-[#7C20D0] to-[#D020C9] text-white shadow-md hover:opacity-92",
+                )}
+                disabled={
+                  mutation.isPending ||
+                  charCount > 10000 ||
+                  !text ||
+                  text.trim().length < 15 ||
+                  !!formState.errors.targetLanguage ||
+                  !!formState.errors.text
+                }
+                onClick={onSubmit}
+              >
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Translating…
+                  </>
+                ) : (
+                  "Translate"
+                )}
+              </Button>
             </div>
 
-            <Button
-              type="button"
-              className={cn(
-                "h-11 w-full shrink-0 touch-manipulation sm:ml-auto sm:w-auto sm:min-w-[8.75rem] lg:shrink-0",
-                "bg-linear-to-br from-[#7C20D0] to-[#D020C9] text-white shadow-md hover:opacity-92",
-              )}
-              disabled={mutation.isPending}
-              onClick={onSubmit}
-            >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Translating…
-                </>
-              ) : (
-                "Translate"
-              )}
-            </Button>
-          </div>
-
-        <div className="relative p-3 sm:p-4 md:p-5">
-          {formState.errors.text?.message || formState.errors.targetLanguage?.message ? (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="size-4" />
-              <AlertTitle className="text-sm font-medium">Unable to translate</AlertTitle>
-              <AlertDescription className="text-sm">
-                {formState.errors.text?.message ??
-                  formState.errors.targetLanguage?.message ??
-                  "Check the inputs and try again."}
-              </AlertDescription>
-            </Alert>
-          ) : null}
+            <div className="relative p-3 sm:p-4 md:p-5">
+              {formState.errors.text?.message || formState.errors.targetLanguage?.message ? (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle className="text-sm font-medium">Unable to translate</AlertTitle>
+                  <AlertDescription className="text-sm">
+                    {formState.errors.text?.message ??
+                      formState.errors.targetLanguage?.message ??
+                      "Check the inputs and try again."}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <Textarea
                 value={text}
@@ -268,17 +277,27 @@ export function TranslationPlayground() {
                   formState.errors.text?.message && "border-destructive/60",
                 )}
               />
-              <p className="mt-2 text-pretty text-xs text-muted-foreground sm:mt-3">
-                Minimum 15 characters. Draft text is remembered for this browser session only.
-              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs sm:mt-3">
+                <p className="text-pretty text-muted-foreground">
+                  Minimum 15 characters. Maximum 10000 characters. Draft text is remembered for this browser session only.
+                </p>
+                <span
+                  className={cn(
+                    "font-medium shrink-0",
+                    charCount > 10000 ? "text-destructive" : "text-muted-foreground"
+                  )}
+                >
+                  {charCount} / 10000 characters
+                </span>
+              </div>
 
-          {mutation.isPending && (
-            <div className="absolute inset-3 z-10 flex flex-col items-center justify-center gap-3 rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm sm:inset-4 md:inset-5">
-              <Loader2 className="size-9 animate-spin text-primary" />
-              <p className="text-sm font-medium text-foreground">Translating…</p>
+              {mutation.isPending && (
+                <div className="absolute inset-3 z-10 flex flex-col items-center justify-center gap-3 rounded-lg border border-border/60 bg-background/80 backdrop-blur-sm sm:inset-4 md:inset-5">
+                  <Loader2 className="size-9 animate-spin text-primary" />
+                  <p className="text-sm font-medium text-foreground">Translating…</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
           </>
         ) : (
           <Tabs value={tab} onValueChange={(v) => setTab(v as "pair" | "json")} className="w-full min-w-0">
