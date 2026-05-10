@@ -11,10 +11,10 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslationPlaygroundStore } from "@/store/translation-playground.store";
-import { translationTextRequestSchema } from "../schemas/translation-request.schema";
+import { createTranslationTextRequestSchema } from "../schemas/translation-request.schema";
 import type { TranslationTextFormValues } from "../types/translation.types";
 import { useTranslateText } from "../hooks/useTranslation";
 import { TRANSLATION_SOURCE_LANGUAGES, TRANSLATION_TARGET_LANGUAGES } from "../config/translationLanguages";
@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const LS_TEXT = "playground.translation.text";
 const LS_SOURCE = "playground.translation.source";
@@ -74,10 +75,27 @@ export function TranslationPlayground() {
   const originalCopy = useCopiedFeedback();
   const translatedCopy = useCopiedFeedback();
 
+  const isMobile = useIsMobile();
+  const maxChars = isMobile ? 2_000 : 5_000;
+
+  const schema = useMemo(
+    () => createTranslationTextRequestSchema(maxChars),
+    [maxChars],
+  );
+
   const methods = useForm<TranslationTextFormValues>({
-    resolver: zodResolver(translationTextRequestSchema),
+    resolver: zodResolver(schema),
     defaultValues: { text: "", sourceLanguage: "auto", targetLanguage: "" },
   });
+
+  // Re-validate when the breakpoint (and thus schema) changes
+  const prevMaxRef = useRef(maxChars);
+  useEffect(() => {
+    if (prevMaxRef.current !== maxChars) {
+      prevMaxRef.current = maxChars;
+      methods.trigger("text");
+    }
+  }, [maxChars, methods]);
 
   const { watch, setValue, formState, reset } = methods;
   const text = watch("text");
@@ -232,7 +250,7 @@ export function TranslationPlayground() {
                 )}
                 disabled={
                   mutation.isPending ||
-                  charCount > 10000 ||
+                  charCount > maxChars ||
                   !text ||
                   text.trim().length < 15 ||
                   !!formState.errors.targetLanguage ||
@@ -279,15 +297,15 @@ export function TranslationPlayground() {
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs sm:mt-3">
                 <p className="text-pretty text-muted-foreground">
-                  Minimum 15 characters. Maximum 10000 characters. Draft text is remembered for this browser session only.
+                  Minimum 15 characters. Maximum {maxChars.toLocaleString()} characters. Draft text is remembered for this browser session only.
                 </p>
                 <span
                   className={cn(
                     "font-medium shrink-0",
-                    charCount > 10000 ? "text-destructive" : "text-muted-foreground"
+                    charCount > maxChars ? "text-destructive" : "text-muted-foreground"
                   )}
                 >
-                  {charCount} / 10000 characters
+                  {charCount} / {maxChars.toLocaleString()} characters
                 </span>
               </div>
 
