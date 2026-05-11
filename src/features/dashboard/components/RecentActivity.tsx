@@ -95,7 +95,7 @@ function mergeAndSort(
   }
 
   rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  return rows.slice(0, 5);
+  return rows.slice(0, 4);
 }
 
 function SkeletonRows() {
