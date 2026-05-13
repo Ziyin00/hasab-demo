@@ -59,17 +59,17 @@ export function TranscriptionFeatureSelection() {
 
   return (
     <Fragment>
-      <div className="flex w-full flex-col gap-2">
-        <div className="space-y-0.5">
+      <div className="flex w-full flex-col gap-2 ">
+        {/* <div className="space-y-0.5">
           <Label htmlFor={summarizeId} className="text-sm leading-none font-medium">
             {summarizeMeta?.title ?? "Summarization"}
             <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
           </Label>
-          
-        </div>
+
+        </div> */}
         <label
           htmlFor={summarizeId}
-          className={toggleRail}
+          className={cn(toggleRail, "py-3")}
         >
           <Checkbox
             id={summarizeId}
@@ -86,13 +86,13 @@ export function TranscriptionFeatureSelection() {
       </div>
 
       <div className="flex w-full flex-col gap-2">
-        <Label htmlFor="translate-checkbox" className="text-sm leading-none font-medium">
+        {/* <Label htmlFor="translate-checkbox" className="text-sm leading-none font-medium">
           Translate
           <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-        </Label>
+        </Label> */}
         <label
           htmlFor="translate-checkbox"
-          className={toggleRail}
+          className={cn(toggleRail, "h-11 py-0 flex items-center gap-2")}
         >
           <Checkbox
             id="translate-checkbox"
@@ -100,33 +100,56 @@ export function TranscriptionFeatureSelection() {
             onCheckedChange={(v) => onTranslateToggle(v === true)}
             className="shrink-0"
           />
-          <span className="min-w-0 flex-1 text-left text-sm text-foreground leading-snug">
-            Generate translation 
+
+          <span className="min-w-0 flex-1 text-left text-sm text-foreground font-medium leading-none">
+            Generate translation
           </span>
+
+          {translate ? (
+
+            <div className="">
+
+
+
+              <Select value={targetLanguage || ""} onValueChange={onTranslateLanguage}>
+
+                <SelectTrigger
+
+                  id="translate-language"
+
+                  aria-invalid={Boolean(targetLangError)}
+
+                  className="w-full cursor-pointer"
+
+                >
+
+                  <SelectValue placeholder="Select language" />
+
+                </SelectTrigger>
+
+                <SelectContent align="start" className="w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width) mt-8">
+
+                  {TRANSCRIPTION_TARGET_LANGUAGES.map((lang) => (
+
+                    <SelectItem key={lang.value} value={lang.value}>
+
+                      {lang.label}
+
+                    </SelectItem>
+
+                  ))}
+
+                </SelectContent>
+
+              </Select>
+
+              {targetLangError ? <p className="text-sm text-destructive">{targetLangError}</p> : null}
+
+            </div>
+
+          ) : null}
         </label>
 
-        {translate ? (
-          <div className="space-y-2  pt-1">
-            
-            <Select value={targetLanguage || ""} onValueChange={onTranslateLanguage}>
-              <SelectTrigger
-                id="translate-language"
-                aria-invalid={Boolean(targetLangError)}
-                className="w-full cursor-pointer"
-              >
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent align="start" className="w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width)">
-                {TRANSCRIPTION_TARGET_LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {targetLangError ? <p className="text-sm text-destructive">{targetLangError}</p> : null}
-          </div>
-        ) : null}
       </div>
     </Fragment>
   );

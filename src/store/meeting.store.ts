@@ -11,6 +11,14 @@ export type MeetingFileMeta = {
   audioId: string | null;
 };
 
+export interface ActiveMeetingJob {
+  phase: "uploading" | "processing" | "done" | "error";
+  fileName: string;
+  progress: number;
+  audioId: string | null;
+  error: string | null;
+}
+
 export type MeetingPlaygroundPersisted = {
   language: string;
   activeTab: "summary" | "json";
@@ -35,6 +43,9 @@ type MeetingState = MeetingPlaygroundPersisted & {
   setFilePreview: (file: MeetingFileMeta | null) => void;
   /** Refresh playable URL after signed link expired (uses stored `audioId`). */
   patchFile: (partial: Partial<MeetingFileMeta>) => void;
+  job: ActiveMeetingJob | null;
+  setJob: (job: ActiveMeetingJob | null) => void;
+  updateJobProgress: (progress: number) => void;
 };
 
 function readStored(): Partial<MeetingPlaygroundPersisted> | null {
@@ -95,6 +106,11 @@ const defaultPersisted: MeetingPlaygroundPersisted = {
 
 export const useMeetingStore = create<MeetingState>((set, get) => ({
   ...defaultPersisted,
+  job: null,
+
+  setJob: (job) => set({ job }),
+  updateJobProgress: (progress) =>
+    set((state) => (state.job ? { job: { ...state.job, progress } } : {})),
 
   hydrateFromStorage: () => {
     const stored = readStored();
@@ -120,7 +136,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     } catch {
       /* noop */
     }
-    set({ ...defaultPersisted });
+    set({ ...defaultPersisted, job: null });
   },
 
   setLanguage: (language) => {

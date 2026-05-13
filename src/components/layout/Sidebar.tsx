@@ -59,6 +59,7 @@ const playgroundItems = [
   { title: "Translation", url: "/dashboard/playground/translation", icon: Languages },
   { title: "Text to Speech", url: "/dashboard/playground/tts", icon: Mic2 },
   { title: "Meeting Minutes", url: "/dashboard/playground/meeting-minutes", icon: Users },
+  { title: "Contexts", url: "/dashboard/context", icon: FileText },
 ];
 
 const historyItems = [
@@ -123,8 +124,7 @@ export function AppSidebar() {
                 alt="Hasab AI"
                 width={28}
                 height={28}
-                className="rounded-md"
-                style={{ height: "auto" }}
+                className="rounded-md size-7"
               />
               <span className="font-bold text-lg tracking-tight">Hasab AI</span>
             </div>
@@ -137,8 +137,7 @@ export function AppSidebar() {
               alt="Hasab AI"
               width={28}
               height={28}
-              className="rounded-md"
-              style={{ height: "auto" }}
+              className="rounded-md size-7"
             />
             <SidebarTrigger />
           </div>

@@ -42,7 +42,7 @@ export function useTranscriptionWorkspace(audioId: string) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const lastAutoScrolledIdRef = useRef<string | null>(null);
 
-  const { lastResult, audioUrl: storeAudioUrl, audioId: storeAudioId } = useTranscriptionStore();
+  const { lastResult, audioUrl: storeAudioUrl, audioId: storeAudioId, reset: resetStore } = useTranscriptionStore();
   const initialData =
     storeAudioId && String(storeAudioId) === audioId && lastResult ? lastResult : undefined;
 
@@ -212,7 +212,10 @@ export function useTranscriptionWorkspace(audioId: string) {
     audioRef.current.play().catch(() => undefined);
   };
 
-  const navigateBackToList = () => router.push("/dashboard/playground/transcription");
+  const navigateBackToList = () => {
+    resetStore();
+    router.push("/dashboard/playground/transcription");
+  };
 
   return {
     router,

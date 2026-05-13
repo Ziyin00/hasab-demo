@@ -62,8 +62,7 @@ export function TTSHistoryPanel() {
   const groups = groupByDate(history);
 
   return (
-    <div className="overflow-y-auto h-full">
-      <div className="px-3 py-3 space-y-4">
+    <div className="px-3 py-3 space-y-4">
         {Array.from(groups.entries()).map(([dateKey, records]) => (
           <div key={dateKey}>
             <p className="text-xs font-semibold px-2 pb-1.5">
@@ -89,7 +88,6 @@ export function TTSHistoryPanel() {
             Load more
           </Button>
         )}
-      </div>
     </div>
   );
 }
