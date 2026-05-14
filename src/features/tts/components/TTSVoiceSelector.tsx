@@ -14,8 +14,6 @@ import {
 export const LANGUAGE_NAMES: Record<string, string> = {
   am: "Amharic (አማርኛ)",
   om: "Oromo (Afaan Oromoo)",
-  en: "English",
-  tig: "Tigrinya (ትግርኛ)",
 };
 
 export function TTSVoiceSelector() {

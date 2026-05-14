@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,7 +55,7 @@ function buildWavHeader(
 }
 
 function pcmChunksToWavBlob(
-  chunks: Uint8Array[],
+  chunks: ArrayBuffer[],
   sampleRate: number,
   numChannels: number,
   bitDepth: number
@@ -68,17 +68,13 @@ function pcmChunksToWavBlob(
 // --- Constants ---
 
 const LANGUAGES = [
-  { label: "አማርኛ", value: "am" },
-  { label: "Afaan Oromoo", value: "om" },
-  { label: "Soomaali", value: "so" },
-  { label: "ትግርኛ", value: "ti" },
+  { label: "Amharic (አማርኛ)", value: "amh" },
+  { label: "Oromo (Afaan Oromoo)", value: "orm" },
 ];
 
-const DEFAULT_SPEAKERS: Record<string, string[]> = {
-  am: ["Selam", "Aster", "Lemlem", "Tigist", "Yared", "Haile", "Hanna"],
-  om: [],
-  so: [],
-  ti: [],
+const SPEAKERS: Record<string, string[]> = {
+  amh: ["Selam", "Aster", "Hanna", "Yared", "Haile", "Tigist"],
+  orm: ["Lemlem"],
 };
 
 type StreamStatus = "idle" | "connecting" | "streaming" | "completed" | "error";
@@ -93,10 +89,9 @@ interface AudioInfo {
 
 export function StreamTTSPage() {
   const [text, setText] = useState("");
-  const [language, setLanguage] = useState("am");
-  const [speaker, setSpeaker] = useState("Selam");
+  const [language, setLanguage] = useState("amh");
+  const [speaker, setSpeaker] = useState(SPEAKERS["amh"][0]);
   const [sampleRate, setSampleRate] = useState("16000");
-  const [speakers, setSpeakers] = useState<Record<string, string[]>>(DEFAULT_SPEAKERS);
 
   const [status, setStatus] = useState<StreamStatus>("idle");
   const statusRef = useRef<StreamStatus>("idle");
@@ -121,22 +116,9 @@ export function StreamTTSPage() {
 
   const isStreaming = status === "streaming" || status === "connecting";
 
+  // Reset speaker when language changes
   useEffect(() => {
-    apiClient
-      .get<{ speakers?: string[]; data?: string[] }>("/tts/speakers", { params: { language } })
-      .then((res) => {
-        const data = res.data?.speakers ?? res.data?.data ?? [];
-        if (Array.isArray(data) && data.length > 0) {
-          const names = data.map((s) => (typeof s === "string" ? s : ""));
-          setSpeakers((prev) => ({ ...prev, [language]: names }));
-          setSpeaker(names[0]);
-        } else {
-          setSpeaker(DEFAULT_SPEAKERS[language]?.[0] ?? "");
-        }
-      })
-      .catch(() => {
-        setSpeaker(DEFAULT_SPEAKERS[language]?.[0] ?? "");
-      });
+    setSpeaker(SPEAKERS[language]?.[0] ?? "");
   }, [language]);
 
   const finishStream = useCallback(async () => {
@@ -151,7 +133,7 @@ export function StreamTTSPage() {
     const duration = totalPcmBytes / (sr * channels * (bitDepth / 8));
 
     const wavBlob = pcmChunksToWavBlob(
-      pcmChunksRef.current.map((ab) => new Uint8Array(ab)),
+      pcmChunksRef.current,
       sr,
       channels,
       bitDepth
@@ -339,7 +321,7 @@ export function StreamTTSPage() {
     setStreamingStatus("");
   };
 
-  const availableSpeakers = speakers[language] ?? DEFAULT_SPEAKERS[language] ?? [];
+  const availableSpeakers = SPEAKERS[language] ?? [];
 
   return (
     <div className="w-full">
