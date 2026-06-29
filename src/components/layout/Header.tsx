@@ -13,10 +13,10 @@ export const Header = () => {
       <div className="flex items-center gap-4">
         {user ? (
           <div className="flex items-center gap-3">
-             <span className="text-sm font-medium">{user.name}</span>
-             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
-             </div>
+            <span className="text-sm font-medium">{user.name}</span>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="w-4 h-4 text-primary" />
+            </div>
           </div>
         ) : (
           <Button variant="ghost" asChild>

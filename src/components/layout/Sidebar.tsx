@@ -18,23 +18,12 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
-  FileAudio,
-  Languages,
-  Mic2,
-  Clock,
-  Key,
-  LayoutDashboard,
-  Users,
   User,
-  CreditCard,
-  Settings,
   LogOut,
   ChevronsUpDown,
-  HelpCircle,
-  MessageSquare,
-  FileText,
   Sun,
   Moon,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -50,24 +39,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const generalItems = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-];
-
-const playgroundItems = [
-  { title: "Transcription", url: "/dashboard/playground/transcription", icon: FileAudio },
-  { title: "Translation", url: "/dashboard/playground/translation", icon: Languages },
-  { title: "Text to Speech", url: "/dashboard/playground/tts", icon: Mic2 },
-  { title: "Meeting Minutes", url: "/dashboard/playground/meeting-minutes", icon: Users },
+const navItems = [
   { title: "Contexts", url: "/dashboard/context", icon: FileText },
-];
-
-const historyItems = [
-  { title: "History", url: "/dashboard/history", icon: Clock },
-];
-
-const settingItems = [
-  { title: "API Keys", url: "/dashboard/api-keys", icon: Key },
 ];
 
 export function AppSidebar() {
@@ -86,32 +59,6 @@ export function AppSidebar() {
   const displayName = isMounted ? user?.name || "Hasab User" : "Hasab User";
   const displayEmail = isMounted ? user?.email || "user@hasab.ai" : "user@hasab.ai";
   const displayInitials = isMounted && user?.name ? user.name.substring(0, 2).toUpperCase() : "HA";
-
-  const renderMenuItems = (items: typeof generalItems) => (
-    <SidebarMenu>
-      {items.map((item) => {
-        const isActive = pathname === item.url;
-        return (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton 
-              asChild 
-              isActive={isActive}
-              tooltip={item.title}
-              className={cn(
-                "transition-all duration-200",
-                isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent"
-              )}
-            >
-              <Link href={item.url} className="flex items-center gap-3">
-                <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {(!isCollapsed || isMobile) && <span>{item.title}</span>}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        );
-      })}
-    </SidebarMenu>
-  );
 
   return (
     <Sidebar collapsible="icon">
@@ -143,59 +90,38 @@ export function AppSidebar() {
           </div>
         )}
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 py-2">General</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuItems(generalItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-4 py-2">Playground</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuItems(playgroundItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-4 py-2">Account & API</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuItems(settingItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            {renderMenuItems(historyItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel className="px-4 py-2">Dashboard</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {[
-                { title: "Help", href: "/help", icon: HelpCircle },
-                { title: "Feedback", href: "/feedback", icon: MessageSquare },
-                { title: "Terms & Conditions", href: "/terms", icon: FileText },
-              ].map(({ title, href, icon: Icon }) => (
-                <SidebarMenuItem key={title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={title}
-                    className="text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  >
-                    <Link href={href} className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      {(!isCollapsed || isMobile) && <span className="text-xs">{title}</span>}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const isActive = pathname === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                      className={cn(
+                        "transition-all duration-200",
+                        isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent"
+                      )}
+                    >
+                      <Link href={item.url} className="flex items-center gap-3">
+                        <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                        {(!isCollapsed || isMobile) && <span>{item.title}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter className="p-4 border-t">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -239,24 +165,6 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings?tab=account" className="flex items-center gap-2 w-full">
-                    <User className="size-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings?tab=billing" className="flex items-center gap-2 w-full">
-                    <CreditCard className="size-4" />
-                    <span>Billing</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings" className="flex items-center gap-2 w-full">
-                    <Settings className="size-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

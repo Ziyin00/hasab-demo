@@ -3,10 +3,24 @@
     "allow": [
       "Read(//c/Users/HP/AppData/Local/Temp/**)",
       "Bash(git stash *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "WebFetch(domain:setrex-saas-template.framer.ai)",
+      "Bash(rm -rf /Users/macbook/Desktop/pro/2025/hasab/hasab-demo/src/app/\\\\\\(marketing\\\\\\))",
+      "Bash(cat /Users/macbook/Desktop/pro/2025/hasab/hasab-demo/pnpm-workspace.yaml && echo \"---\" && ls /Users/macbook/Desktop/pro/2025/hasab/ 2>/dev/null)",
+      "Read(//Users/macbook/Desktop/pro/2025/hasab/**)",
+      "Bash(pnpm install *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3 -c \"import os; p='/Users/macbook/Desktop/pro/2025/hasab/hasab-demo/node_modules/tw-animate-css'; print\\(os.path.islink\\(p\\), os.readlink\\(p\\) if os.path.islink\\(p\\) else 'not a link'\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const p='/Users/macbook/Desktop/pro/2025/hasab/hasab-demo/node_modules/tw-animate-css'; console.log\\(fs.lstatSync\\(p\\)\\)\")",
+      "Bash(node -e \"require.resolve\\('tailwindcss', {paths: ['/Users/macbook/Desktop/pro/2025/hasab/hasab-demo']}\\)\")",
+      "Bash(node -e \"require.resolve\\('tailwindcss', {paths: ['/Users/macbook/Desktop/pro/2025/hasab']}\\)\")",
+      "Bash(ls /Users/macbook/Desktop/pro/2025/hasab/)",
+      "Bash(ls /Users/macbook/Desktop/pro/2025/)",
+      "Read(//Users/macbook/Desktop/pro/2025/**)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings"
+      "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings",
+      "/Users/macbook/Desktop/pro/2025/hasab/hasab-demo/src/app/(marketing)"
     ]
   }
 }
