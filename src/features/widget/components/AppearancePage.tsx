@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,18 +15,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { WidgetPreview } from "./WidgetPreview";
 import { useWidgetConfig, useUpdateWidgetConfig } from "../hooks/useWidget";
+import { useLocalWidgetConfig } from "../hooks/useLocalWidgetConfig";
 import type { WidgetConfig, WidgetPosition } from "../types/widget.types";
-
-const DEFAULT_CONFIG: WidgetConfig = {
-  primary_color: "#3C6278",
-  user_message_color: "#6F0001",
-  position: "bottom-right",
-  width: 460,
-  height: 650,
-  bot_name: "Hasab AI Chat",
-  avatar_text: "HA",
-  welcome_message: "Hello! How can I help you today?",
-};
 
 const POSITIONS: { label: string; value: WidgetPosition }[] = [
   { label: "Bottom Right", value: "bottom-right" },
@@ -36,20 +26,23 @@ const POSITIONS: { label: string; value: WidgetPosition }[] = [
 ];
 
 export function AppearancePage() {
-  const { data: serverConfig, isLoading } = useWidgetConfig();
+  const { data: serverConfig, isLoading: serverLoading } = useWidgetConfig();
   const { mutate: save, isPending: saving } = useUpdateWidgetConfig();
-  const [local, setLocal] = useState<WidgetConfig>(DEFAULT_CONFIG);
+  const { config, setField, seedFromServer, ready, seeded } = useLocalWidgetConfig();
 
+  // Seed localStorage from server on first ever use (no stored data yet)
   useEffect(() => {
-    if (serverConfig) setLocal({ ...DEFAULT_CONFIG, ...serverConfig });
+    if (serverConfig) seedFromServer(serverConfig);
   }, [serverConfig]);
 
   const set = <K extends keyof WidgetConfig>(key: K, val: WidgetConfig[K]) =>
-    setLocal((prev) => ({ ...prev, [key]: val }));
+    setField(key, val);
 
-  const handleSave = () => save(local);
+  const handleSave = () => save(config);
 
-  if (isLoading) {
+  // Show skeleton only before localStorage is read, or if server is loading and
+  // there's nothing in localStorage yet (first ever visit).
+  if (!ready || (serverLoading && !seeded)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-48" />
@@ -91,19 +84,19 @@ export function AppearancePage() {
                     <input
                       type="color"
                       className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-                      value={local.primary_color}
+                      value={config.primary_color}
                       onChange={(e) => set("primary_color", e.target.value)}
                     />
                     <div
                       className="absolute inset-0 rounded-md"
-                      style={{ background: local.primary_color }}
+                      style={{ background: config.primary_color }}
                     />
                   </div>
                   <Input
-                    value={local.primary_color}
+                    value={config.primary_color}
                     onChange={(e) => set("primary_color", e.target.value)}
                     className="font-mono text-sm"
-                    placeholder="#A855F7"
+                    placeholder="#3C6278"
                   />
                 </div>
               </div>
@@ -117,16 +110,16 @@ export function AppearancePage() {
                     <input
                       type="color"
                       className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-                      value={local.user_message_color}
+                      value={config.user_message_color}
                       onChange={(e) => set("user_message_color", e.target.value)}
                     />
                     <div
                       className="absolute inset-0 rounded-md"
-                      style={{ background: local.user_message_color }}
+                      style={{ background: config.user_message_color }}
                     />
                   </div>
                   <Input
-                    value={local.user_message_color}
+                    value={config.user_message_color}
                     onChange={(e) => set("user_message_color", e.target.value)}
                     className="font-mono text-sm"
                     placeholder="#6F0001"
@@ -139,7 +132,7 @@ export function AppearancePage() {
                   Position
                 </Label>
                 <Select
-                  value={local.position}
+                  value={config.position}
                   onValueChange={(v) => set("position", v as WidgetPosition)}
                 >
                   <SelectTrigger>
@@ -161,7 +154,7 @@ export function AppearancePage() {
                 </Label>
                 <Input
                   type="number"
-                  value={local.width}
+                  value={config.width}
                   onChange={(e) => set("width", Number(e.target.value))}
                   min={240}
                   max={800}
@@ -174,7 +167,7 @@ export function AppearancePage() {
                 </Label>
                 <Input
                   type="number"
-                  value={local.height}
+                  value={config.height}
                   onChange={(e) => set("height", Number(e.target.value))}
                   min={300}
                   max={900}
@@ -198,7 +191,7 @@ export function AppearancePage() {
                   Bot Name
                 </Label>
                 <Input
-                  value={local.bot_name}
+                  value={config.bot_name}
                   onChange={(e) => set("bot_name", e.target.value)}
                   placeholder="Hasab AI Chat"
                 />
@@ -209,7 +202,7 @@ export function AppearancePage() {
                   Avatar Initials
                 </Label>
                 <Input
-                  value={local.avatar_text}
+                  value={config.avatar_text}
                   onChange={(e) => set("avatar_text", e.target.value.slice(0, 3))}
                   placeholder="HA"
                   maxLength={3}
@@ -221,7 +214,7 @@ export function AppearancePage() {
                   Welcome Message
                 </Label>
                 <Input
-                  value={local.welcome_message}
+                  value={config.welcome_message}
                   onChange={(e) => set("welcome_message", e.target.value)}
                   placeholder="Hello! How can I help you today?"
                 />
@@ -231,7 +224,7 @@ export function AppearancePage() {
 
           <div className="flex gap-3">
             <Button
-              style={{ background: local.primary_color }}
+              style={{ background: config.primary_color }}
               className="text-white hover:opacity-90 transition-opacity"
               disabled={saving}
               onClick={handleSave}
@@ -250,7 +243,7 @@ export function AppearancePage() {
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Preview
           </p>
-          <WidgetPreview config={local} />
+          <WidgetPreview config={config} />
         </div>
       </div>
     </div>

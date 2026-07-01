@@ -18,7 +18,8 @@
       "Bash(ls /Users/macbook/Desktop/pro/2025/)",
       "Read(//Users/macbook/Desktop/pro/2025/**)",
       "Bash(find /Users/macbook/Desktop/pro/2025/hasab/hasab-demo -name \"fayda-demo.html\" 2>/dev/null; find /Users/macbook/Desktop -name \"fayda-demo.html\" -maxdepth 5 2>/dev/null)",
-      "Read(//Users/macbook/Desktop/**)"
+      "Read(//Users/macbook/Desktop/**)",
+      "Bash(node -e \"console.log\\(require\\('/Users/macbook/Desktop/pro/2025/hasab/hasab-demo/node_modules/zustand/package.json'\\).version\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings",
