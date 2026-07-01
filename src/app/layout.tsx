@@ -27,12 +27,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.className} ${manrope.variable}`}>
+      <body className={`${manrope.className} ${manrope.variable}`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce=""
           scriptProps={{ suppressHydrationWarning: true }}
         >
           <QueryProvider>

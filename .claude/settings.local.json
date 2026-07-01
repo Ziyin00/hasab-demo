@@ -16,7 +16,9 @@
       "Bash(node -e \"require.resolve\\('tailwindcss', {paths: ['/Users/macbook/Desktop/pro/2025/hasab']}\\)\")",
       "Bash(ls /Users/macbook/Desktop/pro/2025/hasab/)",
       "Bash(ls /Users/macbook/Desktop/pro/2025/)",
-      "Read(//Users/macbook/Desktop/pro/2025/**)"
+      "Read(//Users/macbook/Desktop/pro/2025/**)",
+      "Bash(find /Users/macbook/Desktop/pro/2025/hasab/hasab-demo -name \"fayda-demo.html\" 2>/dev/null; find /Users/macbook/Desktop -name \"fayda-demo.html\" -maxdepth 5 2>/dev/null)",
+      "Read(//Users/macbook/Desktop/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings",

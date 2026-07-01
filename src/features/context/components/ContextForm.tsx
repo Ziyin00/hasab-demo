@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Plus, Pencil, X, RotateCcw, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Plus, Pencil, X, RotateCcw, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,10 +55,34 @@ interface Props {
 
 export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
   const [form, setForm] = useState<ContextFormData>(DEFAULT_FORM);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: create, isPending: creating } = useCreateContext(apiKey);
   const { mutate: update, isPending: updating } = useUpdateContext(apiKey);
   const isPending = creating || updating;
   const isEditing = !!editingContext;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoadingFile(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      setForm((p) => ({ ...p, context_data: content }));
+      if (!form.name) {
+        setForm((p) => ({ ...p, name: file.name.replace(/\.[^.]+$/, "") }));
+      }
+      setLoadingFile(false);
+      toast.success(`Loaded ${file.name}`);
+    };
+    reader.onerror = () => {
+      setLoadingFile(false);
+      toast.error("Failed to read file");
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   useEffect(() => {
     if (editingContext) {
@@ -220,15 +245,37 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
             <Label htmlFor="ctx-data" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Context Data
             </Label>
-            <span className={`text-xs font-mono ${charCount > 4000 ? "text-destructive" : "text-muted-foreground"}`}>
-              {charCount.toLocaleString()} chars
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-mono ${charCount > 4000 ? "text-destructive" : "text-muted-foreground"}`}>
+                {charCount.toLocaleString()} chars
+              </span>
+              <button
+                type="button"
+                disabled={!apiKey || loadingFile}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                title="Upload a .txt or .md file"
+              >
+                {loadingFile
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Upload className="h-3 w-3" />
+                }
+                Upload file
+              </button>
+            </div>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,.csv,.json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <Textarea
             id="ctx-data"
             value={form.context_data}
             onChange={(e) => setForm((p) => ({ ...p, context_data: e.target.value }))}
-            placeholder="Add company details, services, policies, custom vocabulary..."
+            placeholder="Add company details, services, policies, custom vocabulary... or upload a .txt / .md file above."
             className="resize-none text-sm h-60 overflow-y-auto"
             disabled={!apiKey}
           />

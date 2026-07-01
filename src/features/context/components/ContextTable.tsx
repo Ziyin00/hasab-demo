@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MoreHorizontal, Eye, Copy, Pencil, Trash2, Loader2 } from "lucide-react";
+import { MoreHorizontal, Eye, Copy, Pencil, Trash2, Loader2, ExternalLink, Database } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Table,
@@ -143,74 +144,106 @@ export function ContextTable({ apiKey, onEdit }: Props) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((context) => (
-                  <TableRow key={context.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium text-sm">{context.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {context.priority}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                          context.is_active
-                            ? "border-green-500/30 text-green-500 bg-green-500/10"
-                            : "border-muted-foreground/30 text-muted-foreground bg-muted/30"
-                        }`}
-                      >
-                        {context.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground hidden sm:table-cell max-w-[200px]">
-                      <p className="truncate">
-                        {(context.context_data || "").slice(0, 60)}
-                        {(context.context_data || "").length > 60 ? "..." : ""}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            {deletingId === context.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            )}
+                filtered.map((context) => {
+                  const isRag = !!context.rag_store_id;
+                  return (
+                    <TableRow key={context.id} className="hover:bg-muted/30">
+                      <TableCell className="font-medium text-sm">
+                        <div className="flex items-center gap-2">
+                          {context.name}
+                          {isRag && (
+                            <Badge
+                              variant="outline"
+                              className="gap-1 text-[10px] px-1.5 py-0 border-primary/30 text-primary bg-primary/5"
+                            >
+                              <Database className="h-2.5 w-2.5" />
+                              KB
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {context.priority}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
+                            context.is_active
+                              ? "border-green-500/30 text-green-500 bg-green-500/10"
+                              : "border-muted-foreground/30 text-muted-foreground bg-muted/30"
+                          }`}
+                        >
+                          {context.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground hidden sm:table-cell max-w-[200px]">
+                        {isRag ? (
+                          <Link
+                            href="/dashboard/knowledge-base"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Manage in Knowledge Base
+                          </Link>
+                        ) : (
+                          <p className="truncate">
+                            {(context.context_data || "").slice(0, 60)}
+                            {(context.context_data || "").length > 60 ? "..." : ""}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isRag ? (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                            <Link href="/dashboard/knowledge-base">
+                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Link>
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setPreviewContext(context)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleCopy(context.context_data)}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onEdit(context)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggle(context)}>
-                            <span className="h-4 w-4 mr-2 inline-flex items-center justify-center text-[10px] font-bold">
-                              {context.is_active ? "○" : "●"}
-                            </span>
-                            {context.is_active ? "Deactivate" : "Activate"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(context.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                {deletingId === context.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setPreviewContext(context)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCopy(context.context_data)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onEdit(context)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggle(context)}>
+                                <span className="h-4 w-4 mr-2 inline-flex items-center justify-center text-[10px] font-bold">
+                                  {context.is_active ? "○" : "●"}
+                                </span>
+                                {context.is_active ? "Deactivate" : "Activate"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDelete(context.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

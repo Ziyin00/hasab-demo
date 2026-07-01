@@ -16,6 +16,7 @@ export interface ContextItem {
   priority: number;
   is_active: boolean;
   context_data: string;
+  rag_store_id?: number | null;
   created_at?: string;
 }
 

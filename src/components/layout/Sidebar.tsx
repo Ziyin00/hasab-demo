@@ -18,11 +18,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
-  User,
   LogOut,
-  ChevronsUpDown,
   Sun,
   Moon,
+  Palette,
+  Database,
+  TrendingUp,
+  KeyRound,
+  Code2,
+  ChevronsUpDown,
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,8 +43,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const navItems = [
-  { title: "Contexts", url: "/dashboard/context", icon: FileText },
+const NAV_GROUPS = [
+  {
+    label: "WIDGET",
+    items: [
+      { title: "Appearance", url: "/dashboard/appearance", icon: Palette },
+      { title: "Knowledge Base", url: "/dashboard/knowledge-base", icon: Database },
+      { title: "Contexts", url: "/dashboard/context", icon: FileText },
+    ],
+  },
+  {
+    label: "MONITORING",
+    items: [
+      { title: "Analytics", url: "/dashboard/analytics", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "DEVELOPER",
+    items: [
+      { title: "API Keys", url: "/dashboard/api-keys", icon: KeyRound },
+      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -56,14 +80,18 @@ export function AppSidebar() {
 
   const isCollapsed = state === "collapsed";
   const { theme, setTheme } = useTheme();
+
   const displayName = isMounted ? user?.name || "Hasab User" : "Hasab User";
   const displayEmail = isMounted ? user?.email || "user@hasab.ai" : "user@hasab.ai";
-  const displayInitials = isMounted && user?.name ? user.name.substring(0, 2).toUpperCase() : "HA";
+  const displayInitials =
+    isMounted && user?.name ? user.name.substring(0, 2).toUpperCase() : "HA";
+  const orgName = isMounted ? user?.organization?.name ?? displayName : displayName;
 
   return (
     <Sidebar collapsible="icon">
+      {/* Header */}
       <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
-        {(!isCollapsed || isMobile) ? (
+        {!isCollapsed || isMobile ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Image
@@ -73,7 +101,12 @@ export function AppSidebar() {
                 height={28}
                 className="rounded-md size-7"
               />
-              <span className="font-bold text-lg tracking-tight">Hasab AI</span>
+              <div>
+                <p className="font-bold text-sm leading-tight">Hasab AI</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                  Chat Dashboard
+                </p>
+              </div>
             </div>
             <SidebarTrigger className="-mr-2" />
           </div>
@@ -91,37 +124,54 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
+      {/* Nav groups */}
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-4 py-2">Dashboard</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.title}
-                      className={cn(
-                        "transition-all duration-200",
-                        isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent"
-                      )}
-                    >
-                      <Link href={item.url} className="flex items-center gap-3">
-                        <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                        {(!isCollapsed || isMobile) && <span>{item.title}</span>}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.label}>
+            {(!isCollapsed || isMobile) && (
+              <SidebarGroupLabel className="px-4 py-2 text-[10px] tracking-widest text-muted-foreground">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const isActive = pathname === item.url;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                        className={cn(
+                          "transition-all duration-150",
+                          isActive
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "hover:bg-accent"
+                        )}
+                      >
+                        <Link href={item.url} className="flex items-center gap-3">
+                          <item.icon
+                            className={cn(
+                              "w-4 h-4 shrink-0",
+                              isActive ? "text-primary" : "text-muted-foreground"
+                            )}
+                          />
+                          {(!isCollapsed || isMobile) && (
+                            <span className="text-sm">{item.title}</span>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
+      {/* Footer */}
       <SidebarFooter className="p-4 border-t">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -132,14 +182,18 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage alt={displayName || "User"} />
-                    <AvatarFallback className="rounded-lg">{displayInitials}</AvatarFallback>
+                    <AvatarImage alt={displayName} />
+                    <AvatarFallback className="rounded-lg text-xs">
+                      {displayInitials}
+                    </AvatarFallback>
                   </Avatar>
                   {(!isCollapsed || isMobile) && (
                     <>
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">{displayName}</span>
-                        <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
+                      <div className="grid flex-1 text-left text-xs leading-tight">
+                        <span className="truncate font-semibold text-sm">{orgName}</span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          Hasab AI Chat v1.0
+                        </span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
                     </>
@@ -155,7 +209,7 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage alt={displayName || "User"} />
+                      <AvatarImage alt={displayName} />
                       <AvatarFallback className="rounded-lg">{displayInitials}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
@@ -169,11 +223,7 @@ export function AppSidebar() {
                   onSelect={(e) => e.preventDefault()}
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
-                  {theme === "dark" ? (
-                    <Sun className="size-4" />
-                  ) : (
-                    <Moon className="size-4" />
-                  )}
+                  {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
                   {theme === "dark" ? "Light Mode" : "Dark Mode"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
