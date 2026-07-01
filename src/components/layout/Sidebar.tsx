@@ -48,7 +48,7 @@ const NAV_GROUPS = [
     label: "WIDGET",
     items: [
       { title: "Appearance", url: "/dashboard/appearance", icon: Palette },
-      { title: "Knowledge Base", url: "/dashboard/knowledge-base", icon: Database },
+      // { title: "Knowledge Base", url: "/dashboard/knowledge-base", icon: Database },
       { title: "Contexts", url: "/dashboard/context", icon: FileText },
     ],
   },
