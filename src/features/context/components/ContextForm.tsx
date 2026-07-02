@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { useCreateContext, useUpdateContext } from "../hooks/useContexts";
 import type { ContextItem, ContextFormData } from "../types/context.types";
 
@@ -397,9 +396,9 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
           className="sm:max-w-2xl p-0 gap-0 flex flex-col max-h-[90vh]"
           showCloseButton={false}
         >
-          <VisuallyHidden.Root>
+          <span className="sr-only">
             <DialogTitle>{isEditing ? "Edit Context" : "New Context"}</DialogTitle>
-          </VisuallyHidden.Root>
+          </span>
           <div className="flex-shrink-0">{cardHeader(true)}</div>
           <div className="overflow-y-auto flex-1">{formBody}</div>
         </DialogContent>
