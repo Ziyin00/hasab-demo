@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Send, X, RotateCcw, Bot, Loader2,
-  MessageSquareDot, Mic, Square,
+  MessageSquareDot, Mic, Square, Play, Pause,
 } from "lucide-react";
 import { useWidgetConfig } from "@/features/widget/hooks/useWidget";
 import { useAuthStore } from "@/store/auth.store";
@@ -16,6 +16,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   isError?: boolean;
+  isVoice?: boolean;
+  audioUrl?: string;
   ts: Date;
 }
 
@@ -196,6 +198,86 @@ function renderMarkdown(raw: string): string {
   return html;
 }
 
+// ─── Voice message player ─────────────────────────────────────────────────────
+
+function VoiceMessage({ audioUrl }: { audioUrl: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Stable decorative waveform bars seeded from the URL
+  const bars = useMemo(() => {
+    const seed = audioUrl.length;
+    return Array.from({ length: 30 }, (_, i) => {
+      const x = Math.sin(i * 0.7 + seed) * 0.5 + 0.5;
+      return 0.15 + x * 0.85;
+    });
+  }, [audioUrl]);
+
+  useEffect(() => {
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.onloadedmetadata = () => setDuration(audio.duration);
+    audio.ontimeupdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+    };
+    audio.onended = () => { setPlaying(false); setProgress(0); setCurrentTime(0); };
+    return () => {
+      audio.pause();
+    };
+  }, [audioUrl]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); setPlaying(false); }
+    else { audio.play(); setPlaying(true); }
+  };
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[180px]">
+      <div className="flex items-center gap-2">
+        {/* Play / Pause */}
+        <button
+          onClick={togglePlay}
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/20 hover:bg-white/30 transition-colors"
+        >
+          {playing
+            ? <Pause className="w-3.5 h-3.5 text-white" />
+            : <Play className="w-3.5 h-3.5 text-white translate-x-px" />}
+        </button>
+
+        {/* Waveform bars */}
+        <div className="flex items-center gap-px flex-1 h-7">
+          {bars.map((h, i) => (
+            <div
+              key={i}
+              className="rounded-full w-1 shrink-0 transition-colors duration-100"
+              style={{
+                height: `${h * 100}%`,
+                background: i / bars.length <= progress
+                  ? "rgba(255,255,255,0.95)"
+                  : "rgba(255,255,255,0.35)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Time */}
+        <span className="text-[11px] text-white/75 shrink-0 tabular-nums">
+          {fmt(playing || progress > 0 ? currentTime : duration)}
+        </span>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ChatWidget() {
@@ -287,14 +369,14 @@ export function ChatWidget() {
 
   // ── Send ──────────────────────────────────────────────────────────────────
 
-  const send = async (text: string) => {
+  const send = async (text: string, isVoice = false, audioUrl?: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
     setInput("");
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: trimmed, ts: new Date() },
+      { role: "user", content: trimmed, isVoice, audioUrl, ts: new Date() },
     ]);
     setLoading(true);
 
@@ -370,17 +452,18 @@ export function ChatWidget() {
         typeof d.data?.transcription === "string"
           ? d.data.transcription
           : d.data?.transcription?.text ??
-            (typeof d.transcription === "string"
-              ? d.transcription
-              : d.transcription?.text) ??
-            "";
+          (typeof d.transcription === "string"
+            ? d.transcription
+            : d.transcription?.text) ??
+          "";
 
       text = text.trim();
       if (!text) throw new Error("empty");
 
       setMicState("idle");
       setRecSecs(0);
-      await send(text);
+      const audioUrl = URL.createObjectURL(finalBlob);
+      await send(text, true, audioUrl);
     } catch {
       clearTimeout(timeout);
       setMicState("idle");
@@ -589,24 +672,22 @@ export function ChatWidget() {
                   style={
                     msg.role === "user"
                       ? {
-                          background: msg.isError ? "#fee2e2" : userMsgColor,
-                          color: msg.isError ? "#b91c1c" : "white",
-                          borderBottomRightRadius: "2px",
-                        }
+                        background: msg.isError ? "#fee2e2" : userMsgColor,
+                        color: msg.isError ? "#b91c1c" : "white",
+                        borderBottomRightRadius: "2px",
+                      }
                       : {
-                          background: msg.isError ? "#fee2e2" : "white",
-                          color: msg.isError ? "#b91c1c" : "#333",
-                          border: `1px solid ${msg.isError ? "#fca5a5" : "#e0e0e0"}`,
-                          borderBottomLeftRadius: "2px",
-                        }
+                        background: msg.isError ? "#fee2e2" : "white",
+                        color: msg.isError ? "#b91c1c" : "#333",
+                        border: `1px solid ${msg.isError ? "#fca5a5" : "#e0e0e0"}`,
+                        borderBottomLeftRadius: "2px",
+                      }
                   }
                 >
-                  {msg.role === "assistant" && !msg.isError ? (
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: renderMarkdown(msg.content),
-                      }}
-                    />
+                  {msg.isVoice && msg.audioUrl ? (
+                    <VoiceMessage audioUrl={msg.audioUrl} />
+                  ) : msg.role === "assistant" && !msg.isError ? (
+                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   ) : (
                     msg.content
                   )}
@@ -694,8 +775,8 @@ export function ChatWidget() {
                 micState === "recording"
                   ? { background: "#e74c3c", color: "white", border: "none" }
                   : micState === "processing"
-                  ? { background: "#f39c12", color: "white", border: "none" }
-                  : {
+                    ? { background: "#f39c12", color: "white", border: "none" }
+                    : {
                       background: "transparent",
                       color: primaryColor,
                       border: `2px solid ${primaryColor}`,
@@ -723,8 +804,8 @@ export function ChatWidget() {
                 micState === "recording"
                   ? "Listening…"
                   : micState === "processing"
-                  ? "Transcribing…"
-                  : ui.placeholder
+                    ? "Transcribing…"
+                    : ui.placeholder
               }
               disabled={loading || micState !== "idle"}
               className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-[13px] text-black focus:outline-none focus:ring-2 focus:border-transparent transition-all"
