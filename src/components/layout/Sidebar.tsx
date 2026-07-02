@@ -51,8 +51,8 @@ const NAV_GROUPS = [
   {
     label: "WIDGET",
     items: [
-      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
       { title: "Contexts", url: "/dashboard/context", icon: FileText },
+      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
     ],
   },
   {
