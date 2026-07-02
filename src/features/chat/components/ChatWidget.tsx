@@ -47,7 +47,7 @@ const LANG_STRINGS: Record<Lang, {
     welcomeBody: "Pick a question above, type, or tap the mic to speak.",
     prompts: ["What can you help me with?", "Tell me about your features", "How do I get started?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in English. Do not use any other language.",
-    sttLang: "en",
+    sttLang: "eng",
   },
   am: {
     label: "አማርኛ",
@@ -278,6 +278,31 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
   );
 }
 
+// ─── Session helpers (guide §1) ──────────────────────────────────────────────
+
+function getVisitorSessionId(): string {
+  const key = "hasab_visitor_session_id";
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function getChatHistoryId(): number | null {
+  const v = sessionStorage.getItem("hasab_chat_history_id");
+  return v ? Number(v) : null;
+}
+
+function saveChatHistoryId(id: number) {
+  sessionStorage.setItem("hasab_chat_history_id", String(id));
+}
+
+function clearChatHistoryId() {
+  sessionStorage.removeItem("hasab_chat_history_id");
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ChatWidget() {
@@ -296,7 +321,7 @@ export function ChatWidget() {
     : "Ask Fayda";
 
   // Language — persisted to localStorage
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("am");
   useEffect(() => {
     const stored = localStorage.getItem("hasabChatLang") as Lang;
     if (stored) setLang(stored);
@@ -380,20 +405,49 @@ export function ChatWidget() {
     ]);
     setLoading(true);
 
+    const visitorId = getVisitorSessionId();
+    const chatHistoryId = getChatHistoryId();
+
+    const buildBody = (newConversation: boolean) => ({
+      message: trimmed,
+      model: "hasab-1-lite",
+      source: "widget",
+      page_url: window.location.href,
+      language: lang,
+      ...(newConversation
+        ? { new_conversation: true }
+        : { chat_history_id: chatHistoryId }),
+    });
+
+    const applyResponse = (r: { data: Record<string, unknown> }) => {
+      if (r.data?.chat_history_id) saveChatHistoryId(r.data.chat_history_id as number);
+      return (
+        (r.data?.message as { content?: string })?.content ??
+        (r.data?.data as { message?: string })?.message ??
+        "No response received."
+      );
+    };
+
     try {
-      const r = await apiClient.post("/chat", {
-        message: trimmed,
-        model: "hasab-1-lite",
+      const r = await apiClient.post("/chat", buildBody(!chatHistoryId), {
+        headers: { "X-Visitor-Session-Id": visitorId },
       });
-      const content =
-        r.data?.message?.content ??
-        r.data?.data?.message ??
-        "No response received.";
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content, ts: new Date() },
-      ]);
-    } catch {
+      const content = applyResponse(r);
+      setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status: number } })?.response?.status;
+      // Stale chat_history_id — clear and retry as new conversation (guide §11)
+      if (status === 404 && chatHistoryId) {
+        clearChatHistoryId();
+        try {
+          const r2 = await apiClient.post("/chat", buildBody(true), {
+            headers: { "X-Visitor-Session-Id": visitorId },
+          });
+          const content = applyResponse(r2);
+          setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+          return;
+        } catch { /* fall through to error message */ }
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -599,7 +653,7 @@ export function ChatWidget() {
             {/* New chat */}
             {messages.length > 0 && (
               <button
-                onClick={() => setMessages([])}
+                onClick={() => { setMessages([]); clearChatHistoryId(); }}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors"
                 title="New chat"
               >
@@ -685,7 +739,14 @@ export function ChatWidget() {
                   }
                 >
                   {msg.isVoice && msg.audioUrl ? (
-                    <VoiceMessage audioUrl={msg.audioUrl} />
+                    <div className="space-y-1.5">
+                      <VoiceMessage audioUrl={msg.audioUrl} />
+                      {msg.content && (
+                        <p className="text-[11px] text-white leading-snug opacity-80 pt-0.5">
+                          {msg.content}
+                        </p>
+                      )}
+                    </div>
                   ) : msg.role === "assistant" && !msg.isError ? (
                     <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   ) : (

@@ -1,15 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check, Loader2, Save } from "lucide-react";
+import { Copy, Check, Loader2, Save, ShieldCheck, KeyRound, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { WidgetPreview } from "./WidgetPreview";
 import { useWidgetConfig, useWidgetKeys, useUpdateWidgetConfig } from "../hooks/useWidget";
 import { useLocalWidgetConfig } from "../hooks/useLocalWidgetConfig";
 import type { WidgetConfig, WidgetPosition } from "../types/widget.types";
+
+const POSITIONS: { label: string; value: WidgetPosition }[] = [
+  { label: "Bottom Right", value: "bottom-right" },
+  { label: "Bottom Left", value: "bottom-left" },
+  { label: "Top Right", value: "top-right" },
+  { label: "Top Left", value: "top-left" },
+];
 
 const ATTRIBUTES = [
   { attr: "data-public-key", default: "required", description: "Your workspace public key" },
@@ -30,7 +45,6 @@ export function InstallationPage() {
   const { config, setField, seedFromServer, ready, seeded } = useLocalWidgetConfig();
   const [copied, setCopied] = useState(false);
 
-  // Seed localStorage from server on first ever use
   useEffect(() => {
     if (serverConfig) seedFromServer(serverConfig);
   }, [serverConfig]);
@@ -68,159 +82,244 @@ export function InstallationPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-lg font-semibold">Installation</h1>
+        <h1 className="text-lg font-semibold">Widget Configuration</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Paste this snippet before the{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">&lt;/body&gt;</code>{" "}
-          tag on any webpage. The widget loads automatically.
+          Customize the widget then copy the snippet to embed it on any webpage.
         </p>
       </div>
 
-      {/* Snippet Settings */}
-      <div className="rounded-xl border bg-card p-5 space-y-5">
-        <div>
-          <h2 className="text-sm font-semibold">Snippet Settings</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Changes sync live with Appearance (shared localStorage). Save to persist to the server.
-          </p>
+      {/* Settings + Preview */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <div className="space-y-5">
+          {/* Colors & Dimensions */}
+          <div className="rounded-xl border bg-card p-5 space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold">Colors &amp; Dimensions</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Controls the primary color, size, and screen position of the widget.
+              </p>
+            </div>
+
+            {settingsLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 rounded-md" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Primary Color
+                  </Label>
+                  <div className="flex gap-2 items-center">
+                    <div className="relative h-9 w-9 rounded-md overflow-hidden border shrink-0">
+                      <input
+                        type="color"
+                        className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                        value={config.primary_color}
+                        onChange={(e) => set("primary_color", e.target.value)}
+                      />
+                      <div className="absolute inset-0 rounded-md" style={{ background: config.primary_color }} />
+                    </div>
+                    <Input
+                      value={config.primary_color}
+                      onChange={(e) => set("primary_color", e.target.value)}
+                      className="font-mono text-sm"
+                      placeholder="#3C6278"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    User Message Color
+                  </Label>
+                  <div className="flex gap-2 items-center">
+                    <div className="relative h-9 w-9 rounded-md overflow-hidden border shrink-0">
+                      <input
+                        type="color"
+                        className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                        value={config.user_message_color}
+                        onChange={(e) => set("user_message_color", e.target.value)}
+                      />
+                      <div className="absolute inset-0 rounded-md" style={{ background: config.user_message_color }} />
+                    </div>
+                    <Input
+                      value={config.user_message_color}
+                      onChange={(e) => set("user_message_color", e.target.value)}
+                      className="font-mono text-sm"
+                      placeholder="#6F0001"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Position
+                  </Label>
+                  <Select
+                    value={config.position}
+                    onValueChange={(v) => set("position", v as WidgetPosition)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POSITIONS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Width (px)
+                  </Label>
+                  <Input
+                    type="number"
+                    value={config.width}
+                    onChange={(e) => set("width", Number(e.target.value))}
+                    min={240}
+                    max={800}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Height (px)
+                  </Label>
+                  <Input
+                    type="number"
+                    value={config.height}
+                    onChange={(e) => set("height", Number(e.target.value))}
+                    min={300}
+                    max={900}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Identity */}
+          <div className="rounded-xl border bg-card p-5 space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold">Identity</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                How the bot introduces itself in the chat window.
+              </p>
+            </div>
+
+            {settingsLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 rounded-md" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Bot Name
+                  </Label>
+                  <Input
+                    value={config.bot_name}
+                    onChange={(e) => set("bot_name", e.target.value)}
+                    placeholder="Hasab AI Chat"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Avatar Initials
+                  </Label>
+                  <Input
+                    value={config.avatar_text}
+                    onChange={(e) => set("avatar_text", e.target.value.slice(0, 3))}
+                    placeholder="HA"
+                    maxLength={3}
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Welcome Message
+                  </Label>
+                  <Input
+                    value={config.welcome_message}
+                    onChange={(e) => set("welcome_message", e.target.value)}
+                    placeholder="Hello! How can I help you today?"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            style={{ background: config.primary_color }}
+            className="text-white hover:opacity-90 transition-opacity gap-2"
+            disabled={settingsLoading || saving}
+            onClick={handleSave}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
         </div>
 
-        {settingsLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 rounded-md" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Primary Color */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Primary Color
-              </Label>
-              <div className="flex gap-2 items-center">
-                <div className="relative h-9 w-9 rounded-md overflow-hidden border shrink-0">
-                  <input
-                    type="color"
-                    className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-                    value={config.primary_color}
-                    onChange={(e) => set("primary_color", e.target.value)}
-                  />
-                  <div className="absolute inset-0 rounded-md" style={{ background: config.primary_color }} />
-                </div>
-                <Input
-                  value={config.primary_color}
-                  onChange={(e) => set("primary_color", e.target.value)}
-                  className="font-mono text-sm"
-                  placeholder="#3C6278"
-                />
-              </div>
-            </div>
+        {/* Live preview */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Preview
+          </p>
+          <WidgetPreview config={config} />
+        </div>
+      </div>
 
-            {/* User Message Color */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                User Message Color
-              </Label>
-              <div className="flex gap-2 items-center">
-                <div className="relative h-9 w-9 rounded-md overflow-hidden border shrink-0">
-                  <input
-                    type="color"
-                    className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-                    value={config.user_message_color}
-                    onChange={(e) => set("user_message_color", e.target.value)}
-                  />
-                  <div className="absolute inset-0 rounded-md" style={{ background: config.user_message_color }} />
-                </div>
-                <Input
-                  value={config.user_message_color}
-                  onChange={(e) => set("user_message_color", e.target.value)}
-                  className="font-mono text-sm"
-                  placeholder="#6F0001"
-                />
-              </div>
-            </div>
-
-            {/* Bot Name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Bot Name
-              </Label>
-              <Input
-                value={config.bot_name}
-                onChange={(e) => set("bot_name", e.target.value)}
-                placeholder="Hasab AI Chat"
-              />
-            </div>
-
-            {/* Width */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Width (px)
-              </Label>
-              <Input
-                type="number"
-                value={config.width}
-                onChange={(e) => set("width", Number(e.target.value))}
-                min={240}
-                max={800}
-              />
-            </div>
-
-            {/* Height */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Height (px)
-              </Label>
-              <Input
-                type="number"
-                value={config.height}
-                onChange={(e) => set("height", Number(e.target.value))}
-                min={300}
-                max={900}
-              />
-            </div>
-
-            {/* Position */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Position
-              </Label>
-              <select
-                value={config.position}
-                onChange={(e) => set("position", e.target.value as WidgetPosition)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="bottom-right">Bottom Right</option>
-                <option value="bottom-left">Bottom Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="top-left">Top Left</option>
-              </select>
-            </div>
-
-            {/* Welcome Message */}
-            <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Welcome Message
-              </Label>
-              <Input
-                value={config.welcome_message}
-                onChange={(e) => set("welcome_message", e.target.value)}
-                placeholder="Hello! How can I help you today?"
-              />
+      {/* How it works */}
+      <div className="rounded-xl border bg-card p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold">How Authentication Works</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            The widget uses RSA key-pair authentication — your private key never leaves your server.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="flex gap-3 items-start rounded-lg border bg-muted/20 px-4 py-3">
+            <KeyRound className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold">Widget Key ID</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                Your public identifier. Goes in <code className="font-mono bg-muted px-0.5 rounded">data-public-key</code> — safe to expose in browser code.
+              </p>
             </div>
           </div>
-        )}
-
-        <Button
-          style={{ background: config.primary_color }}
-          className="text-white hover:opacity-90 transition-opacity gap-2"
-          disabled={settingsLoading || saving}
-          onClick={handleSave}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? "Saving…" : "Save Changes"}
-        </Button>
+          <div className="flex gap-3 items-start rounded-lg border bg-muted/20 px-4 py-3">
+            <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold">RSA Signatures</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                Every widget request is signed with <code className="font-mono bg-muted px-0.5 rounded">RSASSA-PKCS1-v1_5</code> + SHA-256 via your private key.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 items-start rounded-lg border bg-muted/20 px-4 py-3">
+            <Globe className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold">Origin Allowlist</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                Requests are validated against your registered allowed origins. Manage in API Keys.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-[11px] text-destructive font-medium">
+            Never embed your <code className="font-mono">HASAB_KEY</code> in browser code or the embed snippet. Use the Widget Key ID only.
+          </p>
+        </div>
       </div>
 
       {/* Embed Snippet */}
@@ -228,7 +327,9 @@ export function InstallationPage() {
         <div>
           <h2 className="text-sm font-semibold">Embed Snippet</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            One script tag. No build step, no dependencies.
+            Paste before the{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">&lt;/body&gt;</code>{" "}
+            tag on any webpage. The <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">data-public-key</code> is your Widget Key ID — it authenticates browser requests via <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">X-Widget-Key-Id</code>.
           </p>
         </div>
 
@@ -298,7 +399,7 @@ export function InstallationPage() {
       </div>
 
       {/* Attributes reference */}
-      <div className="rounded-xl border bg-card p-5 space-y-4">
+      {/* <div className="rounded-xl border bg-card p-5 space-y-4">
         <div>
           <h2 className="text-sm font-semibold">All Attributes</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -327,7 +428,7 @@ export function InstallationPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

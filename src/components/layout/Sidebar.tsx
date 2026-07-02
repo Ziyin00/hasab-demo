@@ -21,8 +21,6 @@ import {
   LogOut,
   Sun,
   Moon,
-  Palette,
-  Database,
   TrendingUp,
   KeyRound,
   Code2,
@@ -45,24 +43,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NAV_GROUPS = [
   {
-    label: "WIDGET",
-    items: [
-      { title: "Appearance", url: "/dashboard/appearance", icon: Palette },
-      // { title: "Knowledge Base", url: "/dashboard/knowledge-base", icon: Database },
-      { title: "Contexts", url: "/dashboard/context", icon: FileText },
-    ],
-  },
-  {
     label: "MONITORING",
     items: [
       { title: "Analytics", url: "/dashboard/analytics", icon: TrendingUp },
     ],
   },
   {
+    label: "WIDGET",
+    items: [
+      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
+      { title: "Contexts", url: "/dashboard/context", icon: FileText },
+    ],
+  },
+  {
     label: "DEVELOPER",
     items: [
       { title: "API Keys", url: "/dashboard/api-keys", icon: KeyRound },
-      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
     ],
   },
 ];

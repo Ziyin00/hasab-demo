@@ -39,15 +39,15 @@ export interface TeamMember {
 }
 
 export const LANGUAGE_OPTIONS = [
-  { label: "English", value: "en", apiValue: "en" },
+  { label: "English", value: "en", apiValue: "eng" },
   { label: "Amharic (አማርኛ)", value: "am", apiValue: "amh" },
   { label: "Oromo (Afaan Oromoo)", value: "om", apiValue: "orm" },
   { label: "Tigrinya (ትግርኛ)", value: "tir", apiValue: "tir" },
 ] as const;
 
 export const MODEL_OPTIONS = [
-  { label: "hasab-1-lite (recommended)", value: "hasab-1-lite" },
-  { label: "hasab-1-main", value: "hasab-1-main" },
+  { label: "hasab-1-lite (recommended)", value: "hasab-1-lite", disabled: false },
+  { label: "hasab-1-main (coming soon)", value: "hasab-1-main", disabled: true },
 ] as const;
 
 export function getLanguageInstruction(lang: string): string {

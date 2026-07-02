@@ -73,7 +73,7 @@ export function ChatTestTab({ apiKey }: Props) {
             </SelectTrigger>
             <SelectContent>
               {MODEL_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
+                <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
                   {opt.label}
                 </SelectItem>
               ))}

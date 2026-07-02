@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "./StatCard";
 import { TrendChart } from "./TrendChart";
+import { ConversationInbox } from "./ConversationInbox";
 import { useAnalytics } from "../hooks/useAnalytics";
 import type { AnalyticsRange } from "../types/analytics.types";
 
@@ -30,7 +31,7 @@ export function AnalyticsPage() {
         <div>
           <h1 className="text-lg font-semibold">Analytics</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Conversation volume and engagement over the last {range}.
+            Conversation volume and engagement over the selected period.
           </p>
         </div>
         <Select value={range} onValueChange={(v) => setRange(v as AnalyticsRange)}>
@@ -73,7 +74,7 @@ export function AnalyticsPage() {
           value={summary?.satisfaction_rate != null ? `${summary.satisfaction_rate.toFixed(0)}%` : "—"}
           sub={
             summary?.satisfaction_rate != null && summary.satisfaction_sample_size > 0
-              ? `+2% this week`
+              ? `Based on ${summary.satisfaction_sample_size} ratings`
               : undefined
           }
           subPositive
@@ -91,6 +92,8 @@ export function AnalyticsPage() {
           )}
         </div>
       </div>
+
+      <ConversationInbox range={range} />
     </div>
   );
 }
