@@ -259,8 +259,7 @@ export function InstallationPage() {
           </div>
 
           <Button
-            style={{ background: config.primary_color }}
-            className="text-white hover:opacity-90 transition-opacity gap-2"
+            className="gap-2"
             disabled={settingsLoading || saving}
             onClick={handleSave}
           >
@@ -388,8 +387,7 @@ export function InstallationPage() {
         )}
 
         <Button
-          style={{ background: config.primary_color }}
-          className="text-white hover:opacity-90 transition-opacity gap-2"
+          className="gap-2"
           onClick={handleCopy}
           disabled={isLoading}
         >
