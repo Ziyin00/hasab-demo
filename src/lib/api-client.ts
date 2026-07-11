@@ -1,13 +1,9 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 
-export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://api.hasab.ai/api/v1",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+const v1Base = process.env.NEXT_PUBLIC_API_URL || "https://api.hasab.ai/api/v1";
+const apiBase = v1Base.endsWith("/v1") ? v1Base.slice(0, -3) : v1Base.replace(/\/v\d+$/, "");
 
-apiClient.interceptors.request.use((config) => {
+function injectAuth(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   const tokensStr = localStorage.getItem("tokens");
   if (tokensStr) {
     try {
@@ -15,9 +11,23 @@ apiClient.interceptors.request.use((config) => {
       if (tokens.access_token) {
         config.headers.Authorization = `Bearer ${tokens.access_token}`;
       }
-    } catch (e) {
-      // Ignore parse error
+    } catch {
+      // ignore parse error
     }
   }
   return config;
+}
+
+export const apiClient = axios.create({
+  baseURL: v1Base,
+  headers: { "Content-Type": "application/json" },
 });
+
+apiClient.interceptors.request.use(injectAuth);
+
+export const chatbotApiClient = axios.create({
+  baseURL: apiBase,
+  headers: { "Content-Type": "application/json" },
+});
+
+chatbotApiClient.interceptors.request.use(injectAuth);

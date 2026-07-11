@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check, Loader2, Save, ShieldCheck, KeyRound, Globe } from "lucide-react";
+import { Copy, Check, Loader2, Save, ShieldCheck, KeyRound, Globe, Bot } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,12 +278,30 @@ export function InstallationPage() {
         </div>
       </div>
 
+      {/* CDN widget notice */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <Bot className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <h2 className="text-sm font-semibold">New: CDN Chatbot Widgets</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              The new widget flow uses per-widget configuration with session-token auth — no RSA keys in the browser. Each widget gets its own embed snippet with a public <code className="font-mono bg-muted px-0.5 rounded">data-widget-id</code>.
+            </p>
+          </div>
+        </div>
+        <Link href="/dashboard/widgets">
+          <button className="text-xs font-semibold text-primary underline underline-offset-2 hover:opacity-80 transition-opacity">
+            Manage Chatbot Widgets →
+          </button>
+        </Link>
+      </div>
+
       {/* How it works */}
       <div className="rounded-xl border bg-card p-5 space-y-4">
         <div>
-          <h2 className="text-sm font-semibold">How Authentication Works</h2>
+          <h2 className="text-sm font-semibold">Legacy Authentication (Server-Side)</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            The widget uses RSA key-pair authentication — your private key never leaves your server.
+            The RSA key-pair flow below is for advanced server-side integrations. For browser-embedded CDN widgets, use the new session-token flow under Widgets.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">

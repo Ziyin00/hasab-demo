@@ -20,7 +20,8 @@
       "Bash(find /Users/macbook/Desktop/pro/2025/hasab/hasab-demo -name \"fayda-demo.html\" 2>/dev/null; find /Users/macbook/Desktop -name \"fayda-demo.html\" -maxdepth 5 2>/dev/null)",
       "Read(//Users/macbook/Desktop/**)",
       "Bash(node -e \"console.log\\(require\\('/Users/macbook/Desktop/pro/2025/hasab/hasab-demo/node_modules/zustand/package.json'\\).version\\)\")",
-      "Bash(mkdir -p /Users/macbook/Desktop/pro/2025/hasab/hasab-demo/src/app/dashboard/analytics/conversations/\\\\[id\\\\])"
+      "Bash(mkdir -p /Users/macbook/Desktop/pro/2025/hasab/hasab-demo/src/app/dashboard/analytics/conversations/\\\\[id\\\\])",
+      "Bash(pnpm run *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings",
