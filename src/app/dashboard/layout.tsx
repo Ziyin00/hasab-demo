@@ -12,7 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ChatWidget } from "@/features/chat/components/ChatWidget";
+import { GlobalChatWidget } from "@/features/chat/components/GlobalChatWidget";
 
 export default function DashboardLayout({
   children,
@@ -57,7 +57,7 @@ export default function DashboardLayout({
           </main>
         </div>
       </div>
-      <ChatWidget />
+      <GlobalChatWidget />
     </SidebarProvider>
   );
 }

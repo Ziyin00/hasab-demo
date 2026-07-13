@@ -9,6 +9,11 @@ import { useWidgetConfig } from "@/features/widget/hooks/useWidget";
 import { useAuthStore } from "@/store/auth.store";
 import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import type {
+  ChatbotWidgetTheme,
+  ChatbotWidgetSettings,
+  WidgetPosition,
+} from "@/features/chatbot-widgets/types/chatbot-widget.types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -305,20 +310,75 @@ function clearChatHistoryId() {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ChatWidget() {
+interface ChatWidgetProps {
+  /**
+   * Renders as a real bubble (launcher + toggled panel) positioned inside its
+   * parent container instead of the viewport. Used for the live preview
+   * inside the widget create/edit sheet, so it behaves like the actual
+   * embedded widget rather than a flat mockup.
+   */
+  embedded?: boolean;
+  /** Widget theme driving the preview's colors/labels — falls back to legacy widget config when absent. */
+  theme?: ChatbotWidgetTheme;
+  /** Widget settings driving the preview's text/feature toggles. */
+  settings?: ChatbotWidgetSettings;
+  /** Corner the bubble docks to when embedded. Defaults to bottom-right. */
+  position?: WidgetPosition;
+  welcomeMessage?: string;
+  botNameOverride?: string;
+}
+
+function parsePx(value: string | undefined, fallback: number): number {
+  const n = value ? parseInt(value, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(Math.max(n, min), max);
+}
+
+export function ChatWidget({
+  embedded = false,
+  theme,
+  settings,
+  position = "bottom-right",
+  welcomeMessage,
+  botNameOverride,
+}: ChatWidgetProps = {}) {
   const { data: config } = useWidgetConfig();
   const { user } = useAuthStore();
-  const primaryColor = config?.primary_color ?? "#3C6278";
-  const userMsgColor = config?.user_message_color ?? "#6F0001";
+  const primaryColor = theme?.primary_color ?? config?.primary_color ?? "#3C6278";
+  const userMsgColor = theme?.user_message_background ?? config?.user_message_color ?? "#6F0001";
+  const userMsgTextColor = theme?.user_message_text_color ?? "white";
+  const panelBackground = theme?.panel_background ?? "white";
+  const messageAreaBackground = theme?.message_area_background ?? "#f5f5f5";
+  const botMsgBackground = theme?.bot_message_background ?? "white";
+  const botMsgTextColor = theme?.bot_message_text_color ?? "#333";
+  const borderColor = theme?.border_color ?? "#e0e0e0";
+  const chipBackground = theme?.chip_background;
+  const chipTextColor = theme?.chip_text_color;
+  const launcherBg = theme?.launcher?.background_color ?? primaryColor;
+  const launcherText = theme?.launcher?.text_color ?? "white";
+
+  // Clamped to sane bounds — tighter when embedded so an arbitrary theme value
+  // can't blow out the small preview box; looser for the real floating widget.
+  const launcherSize = clamp(parsePx(theme?.launcher_size, 56), 40, embedded ? 72 : 96);
+  const panelWidth = clamp(parsePx(theme?.panel_width, embedded ? 280 : 380), embedded ? 220 : 280, embedded ? 300 : 520);
+  const panelHeight = clamp(parsePx(theme?.panel_height, embedded ? 420 : 620), embedded ? 320 : 400, embedded ? 480 : 720);
+
+  const showMic = settings ? settings.features?.audio_upload !== false : true;
+  const showPrompts = settings ? settings.features?.quick_prompts !== false : true;
+  const showLangSelector = settings ? settings.features?.language_selector !== false : true;
 
   // isMounted prevents hydration mismatch: useAuthStore reads localStorage which
   // is unavailable on the server, so SSR and client initial render both use the
   // fallback, then swap to the real value after mount.
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
-  const botName = isMounted
-    ? (config?.bot_name ?? user?.organization?.name ?? user?.name ?? "Ask Fayda")
-    : "Ask Fayda";
+  const botName = botNameOverride
+    ?? (isMounted
+      ? (config?.bot_name ?? user?.organization?.name ?? user?.name ?? "Ask Fayda")
+      : "Ask Fayda");
 
   // Language — persisted to localStorage
   const [lang, setLang] = useState<Lang>("am");
@@ -359,6 +419,20 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Embedded previews (widget editor) must not share chat_history_id across
+  // different widgets being tested in the same browser session, so continuity
+  // is kept in a local ref instead of the shared sessionStorage key.
+  const embeddedHistoryIdRef = useRef<number | null>(null);
+  const getHistoryId = () => (embedded ? embeddedHistoryIdRef.current : getChatHistoryId());
+  const saveHistoryId = (id: number) => {
+    if (embedded) embeddedHistoryIdRef.current = id;
+    else saveChatHistoryId(id);
+  };
+  const clearHistoryId = () => {
+    if (embedded) embeddedHistoryIdRef.current = null;
+    else clearChatHistoryId();
+  };
 
   // Voice state
   const [micState, setMicState] = useState<MicState>("idle");
@@ -406,7 +480,7 @@ export function ChatWidget() {
     setLoading(true);
 
     const visitorId = getVisitorSessionId();
-    const chatHistoryId = getChatHistoryId();
+    const chatHistoryId = getHistoryId();
 
     const buildBody = (newConversation: boolean) => ({
       message: trimmed,
@@ -420,7 +494,7 @@ export function ChatWidget() {
     });
 
     const applyResponse = (r: { data: Record<string, unknown> }) => {
-      if (r.data?.chat_history_id) saveChatHistoryId(r.data.chat_history_id as number);
+      if (r.data?.chat_history_id) saveHistoryId(r.data.chat_history_id as number);
       return (
         (r.data?.message as { content?: string })?.content ??
         (r.data?.data as { message?: string })?.message ??
@@ -438,7 +512,7 @@ export function ChatWidget() {
       const status = (err as { response?: { status: number } })?.response?.status;
       // Stale chat_history_id — clear and retry as new conversation (guide §11)
       if (status === 404 && chatHistoryId) {
-        clearChatHistoryId();
+        clearHistoryId();
         try {
           const r2 = await apiClient.post("/chat", buildBody(true), {
             headers: { "X-Visitor-Session-Id": visitorId },
@@ -574,19 +648,41 @@ export function ChatWidget() {
 
   const isEmpty = messages.length === 0;
 
+  // Bubble docking corner — embedded docks inside its preview container,
+  // non-embedded docks to the viewport; both use the same corner math so the
+  // real floating widget matches the preview exactly.
+  const isBottom = position.startsWith("bottom");
+  const isLeft = position.endsWith("left");
+  const originClass = `origin-${isBottom ? "bottom" : "top"}-${isLeft ? "left" : "right"}`;
+  const edgeInset = embedded ? 16 : 24;
+  const cornerOffsets = (verticalOffset: number): React.CSSProperties => ({
+    ...(isBottom ? { bottom: verticalOffset } : { top: verticalOffset }),
+    ...(isLeft ? { left: edgeInset } : { right: edgeInset }),
+  });
+
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <>
+    <div className={embedded ? "relative w-full h-full overflow-hidden" : "contents"}>
       {/* ── Floating panel ── */}
       <div
         className={cn(
-          "fixed z-50 flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-gray-200 transition-all duration-300 origin-bottom-right",
+          "flex flex-col overflow-hidden shadow-2xl border border-gray-200 rounded-2xl transition-all duration-300",
+          originClass,
           open
             ? "opacity-100 scale-100 pointer-events-auto"
             : "opacity-0 scale-90 pointer-events-none"
         )}
-        style={{ width: 380, height: 620, bottom: 88, right: 24, background: "white" }}
+        style={{
+          position: embedded ? "absolute" : "fixed",
+          zIndex: embedded ? 10 : 50,
+          width: panelWidth,
+          height: panelHeight,
+          background: panelBackground,
+          ...cornerOffsets(edgeInset + launcherSize + 8),
+          ...(theme?.border_radius ? { borderRadius: theme.border_radius } : {}),
+          ...(theme?.font_family ? { fontFamily: theme.font_family } : {}),
+        }}
       >
         {/* ── Header ── */}
         <div
@@ -598,10 +694,19 @@ export function ChatWidget() {
           {/* Left: bot identity */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
               style={{ background: "rgba(255,255,255,0.2)" }}
             >
-              <Bot className="w-4 h-4 text-white" />
+              {theme?.header?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={theme.header.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : theme?.header?.avatar_initials ? (
+                <span className="text-white text-[11px] font-semibold">
+                  {theme.header.avatar_initials}
+                </span>
+              ) : (
+                <Bot className="w-4 h-4 text-white" />
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate">
@@ -615,7 +720,7 @@ export function ChatWidget() {
                     boxShadow: "0 0 0 2px rgba(34,197,94,0.35)",
                   }}
                 />
-                {ui.online}
+                {settings?.subtitle || ui.online}
               </p>
             </div>
           </div>
@@ -623,37 +728,39 @@ export function ChatWidget() {
           {/* Right: language selector + controls */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Language select — styled like fayda-demo.html */}
-            <div className="relative">
-              <select
-                value={lang}
-                onChange={(e) => changeLang(e.target.value as Lang)}
-                className="appearance-none cursor-pointer rounded-[10px] pr-6 pl-3 py-1.5 text-[11px] font-semibold text-white focus:outline-none transition-all"
-                style={{
-                  background: "rgba(255,255,255,0.25)",
-                  border: "2px solid rgba(255,255,255,0.6)",
-                  minWidth: 90,
-                }}
-              >
-                {LANG_OPTIONS.map((o) => (
-                  <option
-                    key={o.value}
-                    value={o.value}
-                    style={{ background: "white", color: primaryColor }}
-                  >
-                    {o.native}
-                  </option>
-                ))}
-              </select>
-              {/* Custom arrow */}
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white text-[9px] font-bold">
-                ▾
-              </span>
-            </div>
+            {showLangSelector && (
+              <div className="relative">
+                <select
+                  value={lang}
+                  onChange={(e) => changeLang(e.target.value as Lang)}
+                  className="appearance-none cursor-pointer rounded-[10px] pr-6 pl-3 py-1.5 text-[11px] font-semibold text-white focus:outline-none transition-all"
+                  style={{
+                    background: "rgba(255,255,255,0.25)",
+                    border: "2px solid rgba(255,255,255,0.6)",
+                    minWidth: 90,
+                  }}
+                >
+                  {LANG_OPTIONS.map((o) => (
+                    <option
+                      key={o.value}
+                      value={o.value}
+                      style={{ background: "white", color: primaryColor }}
+                    >
+                      {o.native}
+                    </option>
+                  ))}
+                </select>
+                {/* Custom arrow */}
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white text-[9px] font-bold">
+                  ▾
+                </span>
+              </div>
+            )}
 
             {/* New chat */}
             {messages.length > 0 && (
               <button
-                onClick={() => { setMessages([]); clearChatHistoryId(); }}
+                onClick={() => { setMessages([]); clearHistoryId(); }}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors"
                 title="New chat"
               >
@@ -672,15 +779,23 @@ export function ChatWidget() {
         </div>
 
         {/* ── FAQ strip ── */}
-        {isEmpty && (
+        {isEmpty && showPrompts && (
           <div className="px-3 py-2 border-b bg-white flex gap-1.5 flex-wrap shrink-0">
-            {ui.prompts.map((q) => (
+            {(settings?.quick_prompts?.length
+              ? settings.quick_prompts.map((p) => ({ label: p.label, text: p.prompt }))
+              : ui.prompts.map((q) => ({ label: q, text: q }))
+            ).map((q) => (
               <button
-                key={q}
-                onClick={() => send(q)}
+                key={q.label}
+                onClick={() => send(q.text)}
                 className="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors whitespace-nowrap"
+                style={
+                  chipBackground
+                    ? { background: chipBackground, color: chipTextColor, borderColor: "transparent" }
+                    : undefined
+                }
               >
-                {q}
+                {q.label}
               </button>
             ))}
           </div>
@@ -689,7 +804,7 @@ export function ChatWidget() {
         {/* ── Messages ── */}
         <div
           className="flex-1 overflow-y-auto p-3.5 space-y-2.5"
-          style={{ background: "#f5f5f5" }}
+          style={{ background: messageAreaBackground }}
         >
           {isEmpty && (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 pb-6">
@@ -706,7 +821,7 @@ export function ChatWidget() {
                   {ui.welcomeTitle}
                 </h3>
                 <p className="text-[11px] text-gray-500 mt-1 max-w-[220px] leading-relaxed">
-                  {ui.welcomeBody}
+                  {welcomeMessage ?? ui.welcomeBody}
                 </p>
               </div>
             </div>
@@ -727,13 +842,13 @@ export function ChatWidget() {
                     msg.role === "user"
                       ? {
                         background: msg.isError ? "#fee2e2" : userMsgColor,
-                        color: msg.isError ? "#b91c1c" : "white",
+                        color: msg.isError ? "#b91c1c" : userMsgTextColor,
                         borderBottomRightRadius: "2px",
                       }
                       : {
-                        background: msg.isError ? "#fee2e2" : "white",
-                        color: msg.isError ? "#b91c1c" : "#333",
-                        border: `1px solid ${msg.isError ? "#fca5a5" : "#e0e0e0"}`,
+                        background: msg.isError ? "#fee2e2" : botMsgBackground,
+                        color: msg.isError ? "#b91c1c" : botMsgTextColor,
+                        border: `1px solid ${msg.isError ? "#fca5a5" : borderColor}`,
                         borderBottomLeftRadius: "2px",
                       }
                   }
@@ -822,36 +937,38 @@ export function ChatWidget() {
 
           <div className="flex items-center gap-2 px-3 py-2.5">
             {/* Mic button */}
-            <button
-              onClick={toggleRecording}
-              disabled={loading}
-              title={
-                micState === "recording" ? "Stop recording" : "Record voice message"
-              }
-              className={cn(
-                "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-200",
-                micState === "recording" && "animate-pulse"
-              )}
-              style={
-                micState === "recording"
-                  ? { background: "#e74c3c", color: "white", border: "none" }
-                  : micState === "processing"
-                    ? { background: "#f39c12", color: "white", border: "none" }
-                    : {
-                      background: "transparent",
-                      color: primaryColor,
-                      border: `2px solid ${primaryColor}`,
-                    }
-              }
-            >
-              {micState === "processing" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : micState === "recording" ? (
-                <Square className="w-3.5 h-3.5 fill-current" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
+            {showMic && (
+              <button
+                onClick={toggleRecording}
+                disabled={loading}
+                title={
+                  micState === "recording" ? "Stop recording" : "Record voice message"
+                }
+                className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-200",
+                  micState === "recording" && "animate-pulse"
+                )}
+                style={
+                  micState === "recording"
+                    ? { background: "#e74c3c", color: "white", border: "none" }
+                    : micState === "processing"
+                      ? { background: "#f39c12", color: "white", border: "none" }
+                      : {
+                        background: "transparent",
+                        color: primaryColor,
+                        border: `2px solid ${primaryColor}`,
+                      }
+                }
+              >
+                {micState === "processing" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : micState === "recording" ? (
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+            )}
 
             {/* Text input */}
             <input
@@ -866,7 +983,7 @@ export function ChatWidget() {
                   ? "Listening…"
                   : micState === "processing"
                     ? "Transcribing…"
-                    : ui.placeholder
+                    : settings?.input_placeholder || ui.placeholder
               }
               disabled={loading || micState !== "idle"}
               className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-[13px] text-black focus:outline-none focus:ring-2 focus:border-transparent transition-all"
@@ -895,16 +1012,29 @@ export function ChatWidget() {
       {/* ── Launcher FAB ── */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-        style={{ background: primaryColor, bottom: 24, right: 24 }}
+        className="rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        style={{
+          position: embedded ? "absolute" : "fixed",
+          zIndex: embedded ? 10 : 50,
+          width: launcherSize,
+          height: launcherSize,
+          background: launcherBg,
+          color: launcherText,
+          ...cornerOffsets(edgeInset),
+        }}
         title={open ? "Close chat" : "Open chat"}
       >
         {open ? (
-          <X className="w-6 h-6 text-white" />
+          <X className="w-6 h-6" />
+        ) : theme?.launcher?.icon_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={theme.launcher.icon_url} alt="" className="w-6 h-6 object-contain" />
+        ) : theme?.launcher?.label ? (
+          <span className="text-xs font-semibold px-1">{theme.launcher.label}</span>
         ) : (
-          <MessageSquareDot className="w-6 h-6 text-white" />
+          <MessageSquareDot className="w-6 h-6" />
         )}
       </button>
-    </>
+    </div>
   );
 }

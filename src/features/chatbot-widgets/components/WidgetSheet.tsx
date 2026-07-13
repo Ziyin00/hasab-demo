@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ChatWidget } from "@/features/chat/components/ChatWidget";
 import { AllowedOriginsEditor } from "./AllowedOriginsEditor";
 import { ThemeEditor } from "./ThemeEditor";
 import { SettingsEditor } from "./SettingsEditor";
@@ -189,7 +190,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl flex flex-col p-0 gap-0"
+        className="w-full sm:max-w-2xl lg:max-w-5xl flex flex-col p-0 gap-0"
       >
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <SheetTitle>{isEdit ? "Edit Widget" : "New Widget"}</SheetTitle>
@@ -200,7 +201,8 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-w-0">
           <Tabs defaultValue="general" className="flex flex-col h-full">
             <TabsList className="shrink-0 rounded-none border-b justify-start px-6 h-10 gap-1 bg-transparent">
               <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
@@ -366,6 +368,24 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
               </div>
             </TabsContent>
           </Tabs>
+        </div>
+
+          {/* Live preview — real, interactive chat scoped to this widget's theme/settings */}
+          {/* <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-2 border-l bg-muted/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Live Preview
+            </p>
+            <div className="flex-1 rounded-2xl overflow-hidden border shadow-sm bg-background">
+              <ChatWidget
+                embedded
+                theme={form.theme}
+                settings={form.settings}
+                position={form.position}
+                welcomeMessage={form.welcome_message}
+                botNameOverride={form.settings.title || form.name || "Preview"}
+              />
+            </div>
+          </div> */}
         </div>
 
         <SheetFooter className="px-6 py-4 border-t shrink-0">
