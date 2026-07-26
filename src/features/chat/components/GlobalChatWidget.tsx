@@ -19,7 +19,8 @@ export function GlobalChatWidget() {
       settings={widget?.settings}
       position={widget?.position}
       welcomeMessage={widget?.welcome_message}
-      botNameOverride={widget ? (widget.settings.title || widget.name) : undefined}
+      botNameOverride={widget?.settings.title || undefined}
+      defaultLanguage={widget?.default_language}
     />
   );
 }

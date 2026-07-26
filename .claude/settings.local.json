@@ -33,7 +33,15 @@
       "Bash(npx --no-install playwright --version)",
       "Bash(echo \"exit:$?\")",
       "Bash(npx eslint *)",
-      "Bash(echo \"typecheck exit:$?\")"
+      "Bash(echo \"typecheck exit:$?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5137/dashboard/analytics)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5137/dashboard/widgets)",
+      "Bash(ls -la /Users/macbook/Desktop/pro/2025/hasab/ 2>&1)",
+      "Bash(find /Users/macbook -maxdepth 5 -iname \"*hasab-dashboard-v2*\" -type d 2>/dev/null)",
+      "Read(//Users/macbook/**)",
+      "Bash(cd /Users/macbook/Desktop/pro/2025/hasab-dashboard-v2-1 && grep -rln \"data-widget-id\\\\|hasab-chatbot\" --include=\"*.js\" --include=\"*.jsx\" --include=\"*.html\" . 2>/dev/null | grep -v node_modules)",
+      "Read(//Users/macbook/Desktop/pro/2025/hasab-dashboard-v2-1/**)",
+      "Bash(cd /Users/macbook/Desktop/pro/2025/hasab-dashboard-v2-1 && find public -maxdepth 2 -type f && echo \"---index.html---\" && cat index.html)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Desktop\\hasab\\hasab-dashbaord-v3\\src\\features\\settings",

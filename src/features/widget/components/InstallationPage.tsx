@@ -328,7 +328,7 @@ export function InstallationPage() {
             <div>
               <p className="text-xs font-semibold">Origin Allowlist</p>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                Requests are validated against your registered allowed origins. Manage in API Keys.
+                Requests are validated against your registered allowed origins. Manage in API Key.
               </p>
             </div>
           </div>

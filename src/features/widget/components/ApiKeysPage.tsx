@@ -167,7 +167,7 @@ export function ApiKeysPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">API Keys</h1>
+        <h1 className="text-lg font-semibold">API Key</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Your Widget Key IDs authenticate browser requests via RSA signatures. The Hasab API Key is for server-side use only — never embed it in browser code.
         </p>
@@ -246,10 +246,10 @@ export function ApiKeysPage() {
           </Button>
         </div>
 
-        <Separator />
+        {/* <Separator /> */}
 
         {/* Manual key input */}
-        <div className="space-y-1.5">
+        {/* <div className="space-y-1.5">
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Use a different key for testing
           </Label>
@@ -289,28 +289,28 @@ export function ApiKeysPage() {
           <p className="text-xs text-muted-foreground">
             Stored locally in your browser. Used by context management and test tabs.
           </p>
-        </div>
+        </div> */}
       </div>
 
       {/* ── Widget Keys ── */}
-      <KeyCard
+      {/* <KeyCard
         title="Widget Key ID — Live"
         description="Use this as data-public-key in your embed snippet. Sent as X-Widget-Key-Id on every browser request to /api/widget/*. Safe to expose in browser code."
         value={keys?.public_key ?? "WIDGET_KEY_••••••••••••••••••••••••••••••••••••"}
         badge={{ label: "LIVE", color: "#22c55e" }}
         loading={keysLoading}
-      />
+      /> */}
 
-      <KeyCard
+      {/* <KeyCard
         title="Widget Key ID — Test"
         description="Same as the live key but rate-limited and billed separately. Use in development and staging environments."
         value={keys?.test_key ?? "WIDGET_KEY_test_••••••••••••••••••••••••••••••"}
         badge={{ label: "TEST", color: "#f59e0b" }}
         loading={keysLoading}
-      />
+      /> */}
 
       {/* ── Anthropic API Key ── */}
-      <div className="rounded-xl border border-destructive/30 bg-card p-5 space-y-3">
+      {/* <div className="rounded-xl border border-destructive/30 bg-card p-5 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-destructive">Anthropic API Key</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -330,7 +330,7 @@ export function ApiKeysPage() {
             Rotate
           </Button>
         </div>
-      </div>
+      </div> */}
 
       {/* ── Regenerate confirmation dialog ── */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

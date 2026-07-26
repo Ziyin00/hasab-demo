@@ -27,6 +27,7 @@ import {
   ChevronsUpDown,
   FileText,
   Bot,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -46,7 +47,8 @@ const NAV_GROUPS = [
   {
     label: "MONITORING",
     items: [
-      { title: "Analytics", url: "/dashboard/analytics", icon: TrendingUp },
+      { title: "Analytics", url: "/dashboard/analytics", icon: TrendingUp, exact: true },
+      { title: "Conversations", url: "/dashboard/analytics/conversations", icon: MessageSquare },
     ],
   },
   {
@@ -60,7 +62,7 @@ const NAV_GROUPS = [
   {
     label: "DEVELOPER",
     items: [
-      { title: "API Keys", url: "/dashboard/api-keys", icon: KeyRound },
+      { title: "API Key", url: "/dashboard/api-keys", icon: KeyRound },
     ],
   },
 ];
@@ -134,7 +136,9 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const isActive = pathname === item.url;
+                  const isActive = item.exact
+                    ? pathname === item.url
+                    : pathname === item.url || pathname.startsWith(item.url + "/");
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton

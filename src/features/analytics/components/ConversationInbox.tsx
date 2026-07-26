@@ -9,6 +9,11 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  Globe,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Tag,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +27,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useConversations } from "../hooks/useConversations";
+import { useChatbotWidgets } from "@/features/chatbot-widgets/hooks/useChatbotWidgets";
+import { useCategories } from "@/features/chatbot-widgets/hooks/useCategories";
 import type { AnalyticsRange, Conversation } from "../types/analytics.types";
+
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -42,6 +57,12 @@ const SOURCE_BADGE: Record<string, string> = {
   mobile: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
+const DEVICE_ICON: Record<string, typeof Monitor> = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tablet: Tablet,
+};
+
 interface ConversationInboxProps {
   range: AnalyticsRange;
 }
@@ -52,8 +73,14 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [source, setSource] = useState("all");
   const [satisfaction, setSatisfaction] = useState("all");
+  const [widgetId, setWidgetId] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all"); // "all" | "uncategorized" | numeric category id
   const [page, setPage] = useState(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: widgets } = useChatbotWidgets();
+  const selectedWidgetId = widgetId !== "all" ? Number(widgetId) : 0;
+  const { data: widgetCategories } = useCategories(selectedWidgetId);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -66,7 +93,12 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
     };
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [source, satisfaction, range]);
+  useEffect(() => { setPage(1); }, [source, satisfaction, widgetId, categoryFilter, range]);
+
+  const handleWidgetChange = (v: string) => {
+    setWidgetId(v);
+    setCategoryFilter("all");
+  };
 
   const { data, isLoading } = useConversations({
     range,
@@ -75,6 +107,12 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
     search: debouncedSearch || undefined,
     source: source !== "all" ? source : undefined,
     satisfaction_rating: satisfaction !== "all" ? satisfaction : undefined,
+    chatbot_widget_id: widgetId !== "all" ? Number(widgetId) : undefined,
+    ...(categoryFilter === "uncategorized"
+      ? { category: "uncategorized" as const }
+      : categoryFilter !== "all"
+        ? { category_id: Number(categoryFilter) }
+        : {}),
   });
 
   const conversations = data?.conversations ?? [];
@@ -114,6 +152,33 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
               <SelectItem value="all">All ratings</SelectItem>
               <SelectItem value="positive">Positive</SelectItem>
               <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={widgetId} onValueChange={handleWidgetChange}>
+            <SelectTrigger className="h-8 w-full sm:w-36 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All widgets</SelectItem>
+              {(widgets ?? []).map((w) => (
+                <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={categoryFilter}
+            onValueChange={setCategoryFilter}
+            disabled={widgetId === "all"}
+          >
+            <SelectTrigger className="h-8 w-full sm:w-36 text-sm">
+              <SelectValue placeholder={widgetId === "all" ? "Pick a widget…" : undefined} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              <SelectItem value="uncategorized">Uncategorized</SelectItem>
+              {(widgetCategories ?? []).map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -158,11 +223,48 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
                         {c.source}
                       </span>
                     )}
+                    {c.category && (
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
+                          c.category.id === null
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        )}
+                      >
+                        <Tag className="h-2.5 w-2.5" />
+                        {c.category.name}
+                      </span>
+                    )}
                   </div>
                   {c.last_message_preview && (
                     <p className="text-xs text-muted-foreground line-clamp-1">
                       {c.last_message_preview}
                     </p>
+                  )}
+                  {(c.language || c.client_metadata?.device_type || c.page_url) && (
+                    <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground/80 pt-0.5">
+                      {c.language && (
+                        <span className="flex items-center gap-0.5">
+                          <Globe className="h-2.5 w-2.5" />
+                          {c.language}
+                        </span>
+                      )}
+                      {c.client_metadata?.device_type && (
+                        (() => {
+                          const Icon = DEVICE_ICON[c.client_metadata.device_type] ?? Monitor;
+                          return (
+                            <span className="flex items-center gap-0.5 capitalize">
+                              <Icon className="h-2.5 w-2.5" />
+                              {c.client_metadata.device_type}
+                            </span>
+                          );
+                        })()
+                      )}
+                      {c.page_url && (
+                        <span className="truncate max-w-[160px]">{safeHostname(c.page_url)}</span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -191,7 +293,7 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
 
       {/* Pagination */}
       {pagination && pagination.last_page > 1 && (
-        <div className="flex items-center justify-between px-5 py-3 border-t">
+        <div className="flex items-center gap-4 px-5 py-3 border-t">
           <span className="text-xs text-muted-foreground">
             Page {pagination.current_page} of {pagination.last_page} · {pagination.total.toLocaleString()} total
           </span>

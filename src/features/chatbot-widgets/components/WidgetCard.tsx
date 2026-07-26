@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Code2, Pencil, Trash2, Loader2, Globe, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,11 +17,11 @@ import { useDeleteChatbotWidget } from "../hooks/useChatbotWidgets";
 
 interface WidgetCardProps {
   widget: ChatbotWidget;
-  onEdit: (widget: ChatbotWidget) => void;
   onSnippet: (widget: ChatbotWidget) => void;
 }
 
-export function WidgetCard({ widget, onEdit, onSnippet }: WidgetCardProps) {
+export function WidgetCard({ widget, onSnippet }: WidgetCardProps) {
+  const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { mutate: deleteWidget, isPending: deleting } = useDeleteChatbotWidget();
 
@@ -65,7 +66,7 @@ export function WidgetCard({ widget, onEdit, onSnippet }: WidgetCardProps) {
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
               title="Edit widget"
-              onClick={() => onEdit(widget)}
+              onClick={() => router.push(`/dashboard/widgets/${widget.id}/edit`)}
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>

@@ -1,3 +1,5 @@
+import type { ClientMetadata } from "@/lib/client-metadata";
+
 export type AnalyticsRange = "7d" | "14d" | "30d" | "90d";
 
 export interface AnalyticsSummary {
@@ -20,13 +22,34 @@ export interface TrendPoint {
   conversations: number;
 }
 
+export interface CategoryBreakdown {
+  category_id: number | null;
+  name: string;
+  slug: string;
+  conversations_count: number;
+  share: number;
+}
+
 export interface AnalyticsData {
   range: AnalyticsRange;
   from: string;
   to: string;
   summary: AnalyticsSummary;
   trend: TrendPoint[];
+  by_category: CategoryBreakdown[];
   last_updated: string;
+}
+
+export interface ConversationCategory {
+  id: number | null;
+  name: string;
+  slug: string; // "uncategorized" when id is null
+}
+
+export interface ConversationWidgetRef {
+  id: number;
+  widget_id: string;
+  name: string;
 }
 
 export interface Conversation {
@@ -37,10 +60,21 @@ export interface Conversation {
   source: string | null;
   page_url: string | null;
   language: string | null;
+  client_ip: string | null;
+  user_agent: string | null;
+  referrer: string | null;
+  origin: string | null;
+  client_metadata: ClientMetadata | null;
   satisfaction_rating: "positive" | "negative" | null;
   message_count: number;
   last_message_preview: string | null;
   last_message_role: string | null;
+  category: ConversationCategory | null;
+  category_confidence: number | null;
+  category_source: "auto" | "manual" | null;
+  categorized_at: string | null;
+  chatbot_widget_id: number | null;
+  chatbot_widget: ConversationWidgetRef | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,8 +94,19 @@ export interface ConversationDetail {
   source: string | null;
   page_url: string | null;
   language: string | null;
+  client_ip: string | null;
+  user_agent: string | null;
+  referrer: string | null;
+  origin: string | null;
+  client_metadata: ClientMetadata | null;
   satisfaction_rating: "positive" | "negative" | null;
   message_count: number;
+  category: ConversationCategory | null;
+  category_confidence: number | null;
+  category_source: "auto" | "manual" | null;
+  categorized_at: string | null;
+  chatbot_widget_id: number | null;
+  chatbot_widget: ConversationWidgetRef | null;
   messages: ConversationMessage[];
 }
 
@@ -84,4 +129,7 @@ export interface ConversationsFilter {
   search?: string;
   source?: string;
   satisfaction_rating?: string;
+  category_id?: number;
+  category?: "uncategorized";
+  chatbot_widget_id?: number;
 }

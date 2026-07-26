@@ -8,8 +8,8 @@ import type {
 } from "../types/analytics.types";
 
 export const analyticsApi = {
-  get: async (range: AnalyticsRange = "30d"): Promise<AnalyticsData> => {
-    const r = await apiClient.get("/chat/analytics", { params: { range } });
+  get: async (range: AnalyticsRange = "30d", chatbot_widget_id?: number): Promise<AnalyticsData> => {
+    const r = await apiClient.get("/chat/analytics", { params: { range, chatbot_widget_id } });
     return r.data.data;
   },
 
@@ -31,5 +31,15 @@ export const analyticsApi = {
     rating: "positive" | "negative";
   }): Promise<void> => {
     await apiClient.post("/chat/feedback", { chat_history_id, rating });
+  },
+
+  updateCategory: async ({
+    id,
+    category_id,
+  }: {
+    id: number;
+    category_id: number | null;
+  }): Promise<void> => {
+    await apiClient.patch(`/chat/conversations/${id}/category`, { category_id });
   },
 };

@@ -9,6 +9,14 @@ import type {
 
 const WIDGETS_KEY = ["chatbot-widgets"] as const;
 
+export function useChatbotWidget(id: number) {
+  return useQuery({
+    queryKey: ["chatbot-widget", id],
+    queryFn: () => chatbotWidgetApi.get(id),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 export function useChatbotWidgets() {
   return useQuery({
     queryKey: WIDGETS_KEY,

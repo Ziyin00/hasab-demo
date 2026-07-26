@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Send, X, RotateCcw, Bot, Loader2,
-  MessageSquareDot, Mic, Square, Play, Pause,
+  MessageSquareDot, Mic, Play, Pause, ChevronLeft,
 } from "lucide-react";
 import { useWidgetConfig } from "@/features/widget/hooks/useWidget";
 import { useAuthStore } from "@/store/auth.store";
 import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { buildClientMetadata } from "@/lib/client-metadata";
 import type {
   ChatbotWidgetTheme,
   ChatbotWidgetSettings,
@@ -26,7 +27,7 @@ interface Message {
   ts: Date;
 }
 
-type MicState = "idle" | "recording" | "processing";
+type MicState = "idle" | "recording" | "paused" | "processing";
 type Lang = "en" | "am" | "om";
 
 // ─── Language strings (mirrors fayda-demo.html) ───────────────────────────────
@@ -283,29 +284,34 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
   );
 }
 
-// ─── Session helpers (guide §1) ──────────────────────────────────────────────
+// ─── Session helpers (conversation lifecycle guide) ──────────────────────────
+// visitor_session_id and chat_history_id both live in localStorage, not
+// sessionStorage: the lifecycle guide requires visitor_session_id to be
+// "durable"/"long-lived in the browser" so a visitor returning within the 24h
+// idle window (even after closing the tab) continues their existing
+// conversation instead of the backend starting a new one.
 
 function getVisitorSessionId(): string {
   const key = "hasab_visitor_session_id";
-  let id = sessionStorage.getItem(key);
+  let id = localStorage.getItem(key);
   if (!id) {
     id = crypto.randomUUID();
-    sessionStorage.setItem(key, id);
+    localStorage.setItem(key, id);
   }
   return id;
 }
 
 function getChatHistoryId(): number | null {
-  const v = sessionStorage.getItem("hasab_chat_history_id");
+  const v = localStorage.getItem("hasab_chat_history_id");
   return v ? Number(v) : null;
 }
 
 function saveChatHistoryId(id: number) {
-  sessionStorage.setItem("hasab_chat_history_id", String(id));
+  localStorage.setItem("hasab_chat_history_id", String(id));
 }
 
 function clearChatHistoryId() {
-  sessionStorage.removeItem("hasab_chat_history_id");
+  localStorage.removeItem("hasab_chat_history_id");
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -326,6 +332,8 @@ interface ChatWidgetProps {
   position?: WidgetPosition;
   welcomeMessage?: string;
   botNameOverride?: string;
+  /** Initial language — widget.default_language from the form. Falls back to English. */
+  defaultLanguage?: string;
 }
 
 function parsePx(value: string | undefined, fallback: number): number {
@@ -344,11 +352,16 @@ export function ChatWidget({
   position = "bottom-right",
   welcomeMessage,
   botNameOverride,
+  defaultLanguage,
 }: ChatWidgetProps = {}) {
   const { data: config } = useWidgetConfig();
   const { user } = useAuthStore();
-  const primaryColor = theme?.primary_color ?? config?.primary_color ?? "#3C6278";
-  const userMsgColor = theme?.user_message_background ?? config?.user_message_color ?? "#6F0001";
+  // config (legacy useWidgetConfig) is this admin session's own single-widget
+  // settings — never part of a real widget's data-theme, so it must not leak
+  // in as a fallback once a real widget's theme is being tested (same reason
+  // botName above gates out config/user data when settings is present).
+  const primaryColor = theme ? (theme.primary_color ?? "#3C6278") : (config?.primary_color ?? "#3C6278");
+  const userMsgColor = theme ? (theme.user_message_background ?? "#6F0001") : (config?.user_message_color ?? "#6F0001");
   const userMsgTextColor = theme?.user_message_text_color ?? "white";
   const panelBackground = theme?.panel_background ?? "white";
   const messageAreaBackground = theme?.message_area_background ?? "#f5f5f5";
@@ -357,6 +370,7 @@ export function ChatWidget({
   const borderColor = theme?.border_color ?? "#e0e0e0";
   const chipBackground = theme?.chip_background;
   const chipTextColor = theme?.chip_text_color;
+  const mutedColor = "#999";
   const launcherBg = theme?.launcher?.background_color ?? primaryColor;
   const launcherText = theme?.launcher?.text_color ?? "white";
 
@@ -366,7 +380,7 @@ export function ChatWidget({
   const panelWidth = clamp(parsePx(theme?.panel_width, embedded ? 280 : 380), embedded ? 220 : 280, embedded ? 300 : 520);
   const panelHeight = clamp(parsePx(theme?.panel_height, embedded ? 420 : 620), embedded ? 320 : 400, embedded ? 480 : 720);
 
-  const showMic = settings ? settings.features?.audio_upload !== false : true;
+  const showMic = settings?.features?.audio_upload === true;
   const showPrompts = settings ? settings.features?.quick_prompts !== false : true;
   const showLangSelector = settings ? settings.features?.language_selector !== false : true;
 
@@ -375,22 +389,43 @@ export function ChatWidget({
   // fallback, then swap to the real value after mount.
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
+  // The config?.bot_name / user?.* fallback chain is legacy-only chrome: it
+  // reads THIS admin session's own account data, which never reaches the
+  // real embedded widget (it isn't part of the snippet's data-settings), so
+  // it must never be used once a real widget (settings) is being tested —
+  // otherwise the preview could show a name the actual snippet-rendered
+  // widget could never produce.
   const botName = botNameOverride
-    ?? (isMounted
-      ? (config?.bot_name ?? user?.organization?.name ?? user?.name ?? "Ask Fayda")
-      : "Ask Fayda");
+    ?? (settings
+      ? "Chat Assistant"
+      : isMounted
+        ? (config?.bot_name ?? user?.organization?.name ?? user?.name ?? "Ask Fayda")
+        : "Ask Fayda");
 
-  // Language — persisted to localStorage
-  const [lang, setLang] = useState<Lang>("am");
+  // Language — seeded from the widget's configured default_language, then
+  // overridden by whatever the visitor picked last time (persisted to localStorage).
+  // lang is a plain string (not the Lang union) because settings.languages can
+  // list any code from the form; LANG_STRINGS only has full translations for
+  // en/am/om today, so unknown codes fall back to the English strings below.
+  const [lang, setLang] = useState<string>(defaultLanguage ?? "en");
   useEffect(() => {
-    const stored = localStorage.getItem("hasabChatLang") as Lang;
+    const stored = localStorage.getItem("hasabChatLang");
     if (stored) setLang(stored);
   }, []);
-  const ui = LANG_STRINGS[lang];
+  const ui = LANG_STRINGS[lang as Lang] ?? LANG_STRINGS.en;
+  const languageOptions = settings?.languages?.length
+    ? settings.languages
+    : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
 
-  // Push language preference as a server-side context (mirrors fayda-demo.html updateLanguageContext)
-  const updateLangContext = async (l: Lang) => {
-    const instruction = LANG_STRINGS[l].contextInstruction;
+  // Push language preference as a server-side context (mirrors fayda-demo.html updateLanguageContext).
+  // Falls back to a generated instruction (using the form-configured label) for
+  // any language code from settings.languages that isn't one of the 3 fully
+  // translated ones below.
+  const updateLangContext = async (l: string) => {
+    const label = languageOptions.find((o) => o.code === l)?.label ?? l;
+    const instruction =
+      LANG_STRINGS[l as Lang]?.contextInstruction ??
+      `CRITICAL: You MUST respond ONLY in ${label}. Do not use any other language.`;
     try {
       const r = await apiClient.get("/chat/context");
       const all: { id: number; name: string }[] = r.data?.contexts ?? r.data?.data ?? [];
@@ -408,7 +443,7 @@ export function ChatWidget({
     }
   };
 
-  const changeLang = (next: Lang) => {
+  const changeLang = (next: string) => {
     setLang(next);
     localStorage.setItem("hasabChatLang", next);
     updateLangContext(next);
@@ -421,8 +456,8 @@ export function ChatWidget({
   const [loading, setLoading] = useState(false);
 
   // Embedded previews (widget editor) must not share chat_history_id across
-  // different widgets being tested in the same browser session, so continuity
-  // is kept in a local ref instead of the shared sessionStorage key.
+  // different widgets being tested in the same browser, so continuity
+  // is kept in a local ref instead of the shared localStorage key.
   const embeddedHistoryIdRef = useRef<number | null>(null);
   const getHistoryId = () => (embedded ? embeddedHistoryIdRef.current : getChatHistoryId());
   const saveHistoryId = (id: number) => {
@@ -488,6 +523,8 @@ export function ChatWidget({
       source: "widget",
       page_url: window.location.href,
       language: lang,
+      visitor_session_id: visitorId,
+      client_metadata: buildClientMetadata(lang),
       ...(newConversation
         ? { new_conversation: true }
         : { chat_history_id: chatHistoryId }),
@@ -608,17 +645,9 @@ export function ChatWidget({
     }
   };
 
-  // ── Toggle recording ──────────────────────────────────────────────────────
+  // ── Recording controls ────────────────────────────────────────────────────
 
-  const toggleRecording = async () => {
-    if (micState === "processing") return;
-
-    if (micState === "recording") {
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      mediaRecorderRef.current?.stop();
-      return;
-    }
-
+  const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -646,6 +675,25 @@ export function ChatWidget({
     }
   };
 
+  const pauseResumeRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (micState === "recording") {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      recorder.pause();
+      setMicState("paused");
+    } else if (micState === "paused") {
+      recorder.resume();
+      timerRef.current = setInterval(() => setRecSecs((s) => s + 1), 1000);
+      setMicState("recording");
+    }
+  };
+
+  const stopAndSubmitRecording = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    mediaRecorderRef.current?.stop();
+  };
+
   const isEmpty = messages.length === 0;
 
   // Bubble docking corner — embedded docks inside its preview container,
@@ -662,12 +710,38 @@ export function ChatWidget({
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  const botAvatar = (size: number) => (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+      style={{
+        width: size,
+        height: size,
+        background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}bb 100%)`,
+      }}
+    >
+      {theme?.header?.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={theme.header.avatar_url} alt="" className="w-full h-full object-cover" />
+      ) : theme?.header?.avatar_initials ? (
+        <span className="text-white font-semibold" style={{ fontSize: size * 0.35 }}>
+          {theme.header.avatar_initials}
+        </span>
+      ) : (
+        <Bot className="text-white" style={{ width: size * 0.45, height: size * 0.45 }} />
+      )}
+    </div>
+  );
+
+  const quickPromptItems = settings?.quick_prompts?.length
+    ? settings.quick_prompts.map((p) => ({ label: p.label, text: p.prompt }))
+    : ui.prompts.map((q) => ({ label: q, text: q }));
+
   return (
     <div className={embedded ? "relative w-full h-full overflow-hidden" : "contents"}>
       {/* ── Floating panel ── */}
       <div
         className={cn(
-          "flex flex-col overflow-hidden shadow-2xl border border-gray-200 rounded-2xl transition-all duration-300",
+          "flex flex-col overflow-hidden shadow-2xl rounded-2xl transition-all duration-300",
           originClass,
           open
             ? "opacity-100 scale-100 pointer-events-auto"
@@ -676,9 +750,10 @@ export function ChatWidget({
         style={{
           position: embedded ? "absolute" : "fixed",
           zIndex: embedded ? 10 : 50,
-          width: panelWidth,
-          height: panelHeight,
+          width: embedded ? panelWidth : `min(${panelWidth}px, calc(100vw - 32px))`,
+          height: embedded ? panelHeight : `min(${panelHeight}px, calc(100dvh - 120px))`,
           background: panelBackground,
+          border: `1px solid ${borderColor}`,
           ...cornerOffsets(edgeInset + launcherSize + 8),
           ...(theme?.border_radius ? { borderRadius: theme.border_radius } : {}),
           ...(theme?.font_family ? { fontFamily: theme.font_family } : {}),
@@ -686,325 +761,355 @@ export function ChatWidget({
       >
         {/* ── Header ── */}
         <div
-          className="flex items-center justify-between px-4 py-3 shrink-0"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}bb 100%)`,
-          }}
+          className="flex items-center px-3 py-2.5 shrink-0 border-b gap-2"
+          style={{ background: panelBackground, borderColor }}
         >
-          {/* Left: bot identity */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.2)" }}
-            >
-              {theme?.header?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={theme.header.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : theme?.header?.avatar_initials ? (
-                <span className="text-white text-[11px] font-semibold">
-                  {theme.header.avatar_initials}
-                </span>
-              ) : (
-                <Bot className="w-4 h-4 text-white" />
-              )}
-            </div>
+          {/* Back / collapse */}
+         
+
+          {/* Bot identity */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {botAvatar(34)}
             <div className="min-w-0">
-              <p className="text-white font-semibold text-sm leading-tight truncate">
+              <p
+                className="font-semibold text-sm leading-tight truncate"
+                style={{ color: theme?.text_color ?? "#111" }}
+              >
                 {botName}
               </p>
-              <p className="flex items-center gap-1 text-white/90 text-[11px] mt-0.5">
+              <p className="flex items-center gap-1 text-[11px] mt-0.5" style={{ color: mutedColor }}>
                 <span
                   className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{
-                    background: "#22c55e",
-                    boxShadow: "0 0 0 2px rgba(34,197,94,0.35)",
-                  }}
+                  style={{ background: "#22c55e", boxShadow: "0 0 0 2px rgba(34,197,94,0.3)" }}
                 />
                 {settings?.subtitle || ui.online}
               </p>
             </div>
           </div>
 
-          {/* Right: language selector + controls */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Language select — styled like fayda-demo.html */}
+          {/* Right actions */}
+          <div className="flex items-center gap-0.5 shrink-0">
             {showLangSelector && (
               <div className="relative">
                 <select
                   value={lang}
-                  onChange={(e) => changeLang(e.target.value as Lang)}
-                  className="appearance-none cursor-pointer rounded-[10px] pr-6 pl-3 py-1.5 text-[11px] font-semibold text-white focus:outline-none transition-all"
+                  onChange={(e) => changeLang(e.target.value)}
+                  className="appearance-none cursor-pointer rounded-lg pr-5 pl-2 py-1 text-[11px] font-medium focus:outline-none transition-all"
                   style={{
-                    background: "rgba(255,255,255,0.25)",
-                    border: "2px solid rgba(255,255,255,0.6)",
-                    minWidth: 90,
+                    background: `${primaryColor}18`,
+                    color: primaryColor,
+                    border: `1px solid ${primaryColor}40`,
                   }}
                 >
-                  {LANG_OPTIONS.map((o) => (
-                    <option
-                      key={o.value}
-                      value={o.value}
-                      style={{ background: "white", color: primaryColor }}
-                    >
-                      {o.native}
+                  {languageOptions.map((o) => (
+                    <option key={o.code} value={o.code} style={{ background: "white", color: "#111" }}>
+                      {o.label}
                     </option>
                   ))}
                 </select>
-                {/* Custom arrow */}
-                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white text-[9px] font-bold">
+                <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px]" style={{ color: primaryColor }}>
                   ▾
                 </span>
               </div>
             )}
-
-            {/* New chat */}
             {messages.length > 0 && (
               <button
                 onClick={() => { setMessages([]); clearHistoryId(); }}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-100"
+                style={{ color: theme?.text_color ?? "#555" }}
                 title="New chat"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
             )}
-
-            {/* Close */}
             <button
               onClick={() => setOpen(false)}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-100"
+              style={{ color: theme?.text_color ?? "#555" }}
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* ── FAQ strip ── */}
-        {isEmpty && showPrompts && (
-          <div className="px-3 py-2 border-b bg-white flex gap-1.5 flex-wrap shrink-0">
-            {(settings?.quick_prompts?.length
-              ? settings.quick_prompts.map((p) => ({ label: p.label, text: p.prompt }))
-              : ui.prompts.map((q) => ({ label: q, text: q }))
-            ).map((q) => (
-              <button
-                key={q.label}
-                onClick={() => send(q.text)}
-                className="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors whitespace-nowrap"
-                style={
-                  chipBackground
-                    ? { background: chipBackground, color: chipTextColor, borderColor: "transparent" }
-                    : undefined
-                }
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ── Messages ── */}
+        {/* ── Messages / Empty state ── */}
         <div
-          className="flex-1 overflow-y-auto p-3.5 space-y-2.5"
+          className="flex-1 overflow-y-auto"
           style={{ background: messageAreaBackground }}
         >
-          {isEmpty && (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 pb-6">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center shadow-md"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}bb 100%)`,
-                }}
-              >
-                <Bot className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-700 text-sm">
-                  {ui.welcomeTitle}
-                </h3>
-                <p className="text-[11px] text-gray-500 mt-1 max-w-[220px] leading-relaxed">
-                  {welcomeMessage ?? ui.welcomeBody}
-                </p>
-              </div>
-            </div>
-          )}
+          {isEmpty ? (
+            /* ── Empty / welcome state ── */
+            <div className="flex flex-col items-center px-4 pt-8 pb-4">
+              {/* Large bot avatar */}
+              {botAvatar(72)}
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex",
-                msg.role === "user" ? "justify-end" : "justify-start"
-              )}
-            >
-              <div className="flex flex-col gap-0.5 max-w-[80%]">
+              {/* Bot name */}
+              <h2
+                className="mt-4 text-xl font-bold leading-tight text-center"
+                style={{ color: theme?.text_color ?? "#111" }}
+              >
+                {botName}
+              </h2>
+              <p
+                className="mt-1 text-[12px] text-center"
+                style={{ color: mutedColor }}
+              >
+                {settings?.subtitle || ui.online}
+              </p>
+
+              {/* "Today" date separator */}
+              <div className="flex items-center w-full gap-3 mt-6 mb-4">
+                <div className="flex-1 h-px" style={{ background: borderColor }} />
+                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <div className="flex-1 h-px" style={{ background: borderColor }} />
+              </div>
+
+              {/* Welcome message bubble — offset matches chip rows (spacer + gap) */}
+              <div className="flex items-start gap-2 w-full mb-2">
+                <div style={{ width: 26, flexShrink: 0 }} />
                 <div
-                  className="rounded-lg px-3 py-2 text-[13px] leading-relaxed"
-                  style={
-                    msg.role === "user"
-                      ? {
-                        background: msg.isError ? "#fee2e2" : userMsgColor,
-                        color: msg.isError ? "#b91c1c" : userMsgTextColor,
-                        borderBottomRightRadius: "2px",
-                      }
-                      : {
-                        background: msg.isError ? "#fee2e2" : botMsgBackground,
-                        color: msg.isError ? "#b91c1c" : botMsgTextColor,
-                        border: `1px solid ${msg.isError ? "#fca5a5" : borderColor}`,
-                        borderBottomLeftRadius: "2px",
-                      }
-                  }
+                  className="flex-1 rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed"
+                  style={{
+                    background: botMsgBackground,
+                    border: `1px solid ${borderColor}`,
+                    color: botMsgTextColor,
+                    borderBottomLeftRadius: "4px",
+                  }}
                 >
-                  {msg.isVoice && msg.audioUrl ? (
-                    <div className="space-y-1.5">
-                      <VoiceMessage audioUrl={msg.audioUrl} />
-                      {msg.content && (
-                        <p className="text-[11px] text-white leading-snug opacity-80 pt-0.5">
-                          {msg.content}
-                        </p>
+                  {welcomeMessage ?? ui.welcomeBody}
+                </div>
+              </div>
+
+              {/* Quick prompt chips — parallel with welcome message; last chip has bot avatar */}
+              {showPrompts && (settings ? settings.quick_prompts?.length : true) && (
+                <div className="w-full space-y-2 mt-1">
+                  {quickPromptItems.map((q, idx, arr) => (
+                    <div key={q.label} className="flex items-center gap-2">
+                      {idx === arr.length - 1
+                        ? botAvatar(26)
+                        : <div style={{ width: 26, flexShrink: 0 }} />
+                      }
+                    <button
+                      onClick={() => send(q.text)}
+                      className="flex-1 text-[12px] px-4 py-2 rounded-full font-medium text-left transition-opacity hover:opacity-85 active:opacity-70"
+                      style={{
+                        background: chipBackground ?? `${primaryColor}18`,
+                        color: chipTextColor ?? primaryColor,
+                        border: `1.5px solid ${chipBackground ? "transparent" : `${primaryColor}40`}`,
+                      }}
+                    >
+                      {q.label}
+                    </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Active conversation ── */
+            <div className="p-3.5 space-y-3">
+              {/* "Today" separator */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px" style={{ background: borderColor }} />
+                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <div className="flex-1 h-px" style={{ background: borderColor }} />
+              </div>
+
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex gap-2",
+                    msg.role === "user" ? "justify-end" : "justify-start items-end"
+                  )}
+                >
+                  {/* Bot avatar on left */}
+                  {msg.role === "assistant" && botAvatar(26)}
+
+                  <div className="flex flex-col gap-0.5 max-w-[76%]">
+                    <div
+                      className="rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed"
+                      style={
+                        msg.role === "user"
+                          ? {
+                            background: msg.isError ? "#fee2e2" : userMsgColor,
+                            color: msg.isError ? "#b91c1c" : userMsgTextColor,
+                            borderBottomRightRadius: "4px",
+                          }
+                          : {
+                            background: msg.isError ? "#fee2e2" : botMsgBackground,
+                            color: msg.isError ? "#b91c1c" : botMsgTextColor,
+                            border: `1px solid ${msg.isError ? "#fca5a5" : borderColor}`,
+                            borderBottomLeftRadius: "4px",
+                          }
+                      }
+                    >
+                      {msg.isVoice && msg.audioUrl ? (
+                        <div className="space-y-1.5">
+                          <VoiceMessage audioUrl={msg.audioUrl} />
+                          {msg.content && (
+                            <p className="text-[11px] text-white leading-snug opacity-80 pt-0.5">
+                              {msg.content}
+                            </p>
+                          )}
+                        </div>
+                      ) : msg.role === "assistant" && !msg.isError ? (
+                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                      ) : (
+                        msg.content
                       )}
                     </div>
-                  ) : msg.role === "assistant" && !msg.isError ? (
-                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] text-gray-400",
-                    msg.role === "user" ? "text-right" : "text-left"
-                  )}
-                >
-                  {msg.ts.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          {/* Typing indicator */}
-          {loading && (
-            <div className="flex justify-start">
-              <div
-                className="rounded-lg px-3 py-2.5"
-                style={{
-                  background: "white",
-                  border: "1px solid #e0e0e0",
-                  borderBottomLeftRadius: "2px",
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-gray-400 italic">
-                    {ui.thinking}
-                  </span>
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2].map((i) => (
-                      <span
-                        key={i}
-                        className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"
-                        style={{ animationDelay: `${i * 0.2}s` }}
-                      />
-                    ))}
+                    <span
+                      className={cn(
+                        "text-[10px]",
+                        msg.role === "user" ? "text-right" : "text-left"
+                      )}
+                      style={{ color: mutedColor }}
+                    >
+                      {msg.ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
                   </div>
                 </div>
-              </div>
+              ))}
+
+              {/* Typing indicator */}
+              {loading && (
+                <div className="flex gap-2 items-end">
+                  {botAvatar(26)}
+                  <div
+                    className="rounded-2xl px-3.5 py-2.5"
+                    style={{
+                      background: botMsgBackground,
+                      border: `1px solid ${borderColor}`,
+                      borderBottomLeftRadius: "4px",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] italic" style={{ color: mutedColor }}>
+                        {ui.thinking}
+                      </span>
+                      <div className="flex gap-0.5">
+                        {[0, 1, 2].map((j) => (
+                          <span
+                            key={j}
+                            className="inline-block w-1.5 h-1.5 rounded-full animate-bounce"
+                            style={{
+                              background: mutedColor,
+                              animationDelay: `${j * 0.2}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
         {/* ── Input area ── */}
-        <div className="border-t bg-white shrink-0">
-          {/* Recording status strip */}
-          {micState === "recording" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border-b border-red-100">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[11px] text-red-600 font-medium">
-                Recording {fmtSecs(recSecs)}
-              </span>
-              <span className="text-[10px] text-red-400 ml-auto">Tap ■ to stop</span>
-            </div>
-          )}
-          {micState === "processing" && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-100">
-              <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
-              <span className="text-[11px] text-amber-600 font-medium">
-                Transcribing audio…
-              </span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            {/* Mic button */}
-            {showMic && (
-              <button
-                onClick={toggleRecording}
-                disabled={loading}
-                title={
-                  micState === "recording" ? "Stop recording" : "Record voice message"
-                }
-                className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-200",
-                  micState === "recording" && "animate-pulse"
-                )}
-                style={
-                  micState === "recording"
-                    ? { background: "#e74c3c", color: "white", border: "none" }
-                    : micState === "processing"
-                      ? { background: "#f39c12", color: "white", border: "none" }
-                      : {
-                        background: "transparent",
-                        color: primaryColor,
-                        border: `2px solid ${primaryColor}`,
-                      }
-                }
-              >
-                {micState === "processing" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : micState === "recording" ? (
-                  <Square className="w-3.5 h-3.5 fill-current" />
+        <div
+          className="shrink-0 px-3 py-3 border-t"
+          style={{ background: panelBackground, borderColor }}
+        >
+          {/* Pill input row — content changes per micState */}
+          <div
+            className="flex items-center gap-2 rounded-full px-4 py-2"
+            style={{
+              border: `1.5px solid ${micState === "recording" ? "#f87171" : micState === "paused" ? "#fbbf24" : borderColor}`,
+              background: messageAreaBackground,
+            }}
+          >
+            {micState === "recording" || micState === "paused" ? (
+              /* ── Recording / paused state ── */
+              <>
+                <span
+                  className="w-2 h-2 rounded-full shrink-0 animate-pulse"
+                  style={{
+                    background: micState === "paused" ? "#f59e0b" : "#ef4444",
+                    animationPlayState: micState === "paused" ? "paused" : "running",
+                  }}
+                />
+                <span className="text-[12px] font-medium tabular-nums shrink-0" style={{ color: micState === "paused" ? "#f59e0b" : "#ef4444" }}>
+                  {fmtSecs(recSecs)}
+                  {micState === "paused" && <span className="ml-1 text-[10px] opacity-70">paused</span>}
+                </span>
+                <div className="flex-1" />
+                {/* Pause / Resume */}
+                <button
+                  onClick={pauseResumeRecording}
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors hover:bg-black/5"
+                  style={{ color: mutedColor }}
+                  title={micState === "recording" ? "Pause" : "Resume"}
+                >
+                  {micState === "recording"
+                    ? <Pause className="w-3.5 h-3.5" />
+                    : <Play className="w-3.5 h-3.5 translate-x-px" />
+                  }
+                </button>
+                {/* Send (stop + submit) */}
+                <button
+                  onClick={stopAndSubmitRecording}
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: primaryColor }}
+                  title="Send recording"
+                >
+                  <Send className="w-3.5 h-3.5 text-white" />
+                </button>
+              </>
+            ) : micState === "processing" ? (
+              /* ── Transcribing state ── */
+              <>
+                <span className="flex-1 text-[13px]" style={{ color: mutedColor }}>
+                  {theme?.mic?.processing_label || "Transcribing…"}
+                </span>
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" style={{ color: primaryColor }} />
+              </>
+            ) : (
+              /* ── Idle state ── */
+              <>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(input); } }}
+                  placeholder={settings?.input_placeholder || ui.placeholder}
+                  disabled={loading}
+                  className="flex-1 bg-transparent text-[13px] focus:outline-none"
+                  style={{ color: theme?.text_color ?? "#111" }}
+                />
+                {/* Right icon: mic when empty (and mic enabled), send when typing */}
+                {showMic && !input.trim() ? (
+                  <button
+                    onClick={startRecording}
+                    disabled={loading}
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors hover:bg-black/5"
+                    style={{ color: mutedColor }}
+                    title="Record voice message"
+                  >
+                    {theme?.mic?.icon_url
+                      ? <img src={theme.mic.icon_url} alt="" className="w-3.5 h-3.5" /> // eslint-disable-line @next/next/no-img-element
+                      : <Mic className="w-3.5 h-3.5" />}
+                  </button>
                 ) : (
-                  <Mic className="w-4 h-4" />
+                  <button
+                    disabled={!input.trim() || loading}
+                    onClick={() => send(input)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-opacity disabled:opacity-35"
+                    style={{ background: primaryColor }}
+                    title="Send"
+                  >
+                    {loading
+                      ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                      : theme?.send?.icon_url
+                        ? <img src={theme.send.icon_url} alt="" className="w-3.5 h-3.5" /> // eslint-disable-line @next/next/no-img-element
+                        : <Send className="w-3.5 h-3.5 text-white" />}
+                  </button>
                 )}
-              </button>
+              </>
             )}
-
-            {/* Text input */}
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); send(input); }
-              }}
-              placeholder={
-                micState === "recording"
-                  ? "Listening…"
-                  : micState === "processing"
-                    ? "Transcribing…"
-                    : settings?.input_placeholder || ui.placeholder
-              }
-              disabled={loading || micState !== "idle"}
-              className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-[13px] text-black focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-              style={
-                { ["--tw-ring-color" as string]: primaryColor } as React.CSSProperties
-              }
-            />
-
-            {/* Send button */}
-            <button
-              disabled={!input.trim() || loading || micState !== "idle"}
-              onClick={() => send(input)}
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-opacity disabled:opacity-40"
-              style={{ background: primaryColor }}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 text-white animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 text-white" />
-              )}
-            </button>
           </div>
         </div>
       </div>
@@ -1012,12 +1117,13 @@ export function ChatWidget({
       {/* ── Launcher FAB ── */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        className="shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         style={{
           position: embedded ? "absolute" : "fixed",
           zIndex: embedded ? 10 : 50,
           width: launcherSize,
           height: launcherSize,
+          borderRadius: "9999px",
           background: launcherBg,
           color: launcherText,
           ...cornerOffsets(edgeInset),
@@ -1029,8 +1135,13 @@ export function ChatWidget({
         ) : theme?.launcher?.icon_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={theme.launcher.icon_url} alt="" className="w-6 h-6 object-contain" />
-        ) : theme?.launcher?.label ? (
-          <span className="text-xs font-semibold px-1">{theme.launcher.label}</span>
+        ) : theme?.launcher?.type !== "icon" && (theme?.launcher?.label || settings?.launcher_label) ? (
+          <span className="flex items-center gap-1 px-1">
+            <MessageSquareDot className="w-5 h-5 shrink-0" />
+            <span className="text-xs font-semibold truncate max-w-18">
+              {theme?.launcher?.label || settings?.launcher_label}
+            </span>
+          </span>
         ) : (
           <MessageSquareDot className="w-6 h-6" />
         )}
@@ -1038,3 +1149,4 @@ export function ChatWidget({
     </div>
   );
 }
+

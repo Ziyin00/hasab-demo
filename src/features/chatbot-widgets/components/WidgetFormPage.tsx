@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Save } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChatWidget } from "@/features/chat/components/ChatWidget";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AllowedOriginsEditor } from "./AllowedOriginsEditor";
 import { ThemeEditor } from "./ThemeEditor";
 import { SettingsEditor } from "./SettingsEditor";
+import { CategoriesEditor } from "./CategoriesEditor";
 import type {
   ChatbotWidget,
   ChatbotWidgetTheme,
@@ -63,32 +57,15 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
   panel_width: "400px",
   panel_height: "580px",
   launcher_size: "64px",
-  launcher: {
-    type: "text",
-    label: "Ask",
-    icon_url: null,
-    background_color: "#0f766e",
-    text_color: "#ffffff",
-  },
-  header: {
-    avatar_url: null,
-    avatar_initials: "AF",
-  },
+  launcher: { type: "text", label: "Ask", icon_url: null, background_color: "#0f766e", text_color: "#ffffff" },
+  header: { avatar_url: null, avatar_initials: "AF" },
   mic: {
-    label: "",
-    recording_label: "Stop",
-    processing_label: "Wait",
-    icon_url: null,
-    recording_icon_url: null,
-    background_color: "#475569",
-    recording_background_color: "#dc2626",
-    processing_background_color: "#d97706",
-    text_color: "#ffffff",
+    label: "", recording_label: "Stop", processing_label: "Wait",
+    icon_url: null, recording_icon_url: null,
+    background_color: "#475569", recording_background_color: "#dc2626",
+    processing_background_color: "#d97706", text_color: "#ffffff",
   },
-  send: {
-    label: "Send",
-    icon_url: null,
-  },
+  send: { label: "Send", icon_url: null },
 };
 
 const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
@@ -97,15 +74,9 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
   launcher_label: "Ask",
   input_placeholder: "Ask in your language...",
   show_language_selector: true,
-  languages: [
-    { code: "en", label: "English" },
-  ],
+  languages: [{ code: "en", label: "English" }],
   quick_prompts: [],
-  features: {
-    audio_upload: false,
-    quick_prompts: true,
-    language_selector: true,
-  },
+  features: { audio_upload: false, quick_prompts: true, language_selector: true },
 };
 
 function emptyForm(): CreateChatbotWidgetPayload {
@@ -124,14 +95,15 @@ function emptyForm(): CreateChatbotWidgetPayload {
   };
 }
 
-interface WidgetSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface WidgetFormPageProps {
   widget?: ChatbotWidget | null;
+  loading?: boolean;
 }
 
-export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
+export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
+  const router = useRouter();
   const isEdit = !!widget;
+
   const { mutate: create, isPending: creating } = useCreateChatbotWidget();
   const { mutate: update, isPending: updating } = useUpdateChatbotWidget();
   const isPending = creating || updating;
@@ -141,20 +113,14 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   const [ragIdsRaw, setRagIdsRaw] = useState("");
 
   useEffect(() => {
-    if (open) {
-      if (widget) {
-        const { id, widget_id, snippet, ...rest } = widget;
-        void id; void widget_id; void snippet;
-        setForm(rest as CreateChatbotWidgetPayload);
-        setContextIdsRaw(widget.chat_context_ids.join(", "));
-        setRagIdsRaw(widget.rag_store_ids.join(", "));
-      } else {
-        setForm(emptyForm());
-        setContextIdsRaw("");
-        setRagIdsRaw("");
-      }
+    if (widget) {
+      const { id, widget_id, snippet, ...rest } = widget;
+      void id; void widget_id; void snippet;
+      setForm(rest as CreateChatbotWidgetPayload);
+      setContextIdsRaw(widget.chat_context_ids.join(", "));
+      setRagIdsRaw(widget.rag_store_ids.join(", "));
     }
-  }, [open, widget]);
+  }, [widget]);
 
   const set = <K extends keyof CreateChatbotWidgetPayload>(
     key: K,
@@ -162,10 +128,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   ) => setForm((prev) => ({ ...prev, [key]: val }));
 
   const parseIds = (raw: string): number[] =>
-    raw
-      .split(/[,\s]+/)
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n));
+    raw.split(/[,\s]+/).map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
 
   const handleSave = () => {
     const payload: CreateChatbotWidgetPayload = {
@@ -173,47 +136,80 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
       chat_context_ids: parseIds(contextIdsRaw),
       rag_store_ids: parseIds(ragIdsRaw),
     };
-
     if (!payload.name.trim()) return;
 
     if (isEdit && widget) {
-      update(
-        { id: widget.id, payload },
-        { onSuccess: () => onOpenChange(false) }
-      );
+      update({ id: widget.id, payload }, { onSuccess: () => router.push("/dashboard/widgets") });
     } else {
-      create(payload, { onSuccess: () => onOpenChange(false) });
+      create(payload, { onSuccess: () => router.push("/dashboard/widgets") });
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-2xl lg:max-w-5xl flex flex-col p-0 gap-0"
+    <div className="space-y-6">
+      {/* Page header */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className=" -ml-1 -mt-16 shrink-0"
+        onClick={() => router.back()}
       >
-        <SheetHeader className="px-6 py-4 border-b shrink-0">
-          <SheetTitle>{isEdit ? "Edit Widget" : "New Widget"}</SheetTitle>
-          <SheetDescription>
-            {isEdit
-              ? "Update widget configuration. Changes apply immediately after saving."
-              : "Configure your chatbot widget. You'll get an embed snippet to paste on any site."}
-          </SheetDescription>
-        </SheetHeader>
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Button>
+      <div className="flex items-center -mt-4 justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div>
+            {loading ? (
+              <Skeleton className="h-5 w-48" />
+            ) : (
+              <h1 className="text-lg font-semibold">
+                {isEdit ? `Edit: ${widget!.name}` : "New Widget"}
+              </h1>
+            )}
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {isEdit
+                ? "Update widget configuration. Changes apply immediately after saving."
+                : "Configure your chatbot widget. You'll get an embed snippet to paste on any site."}
+            </p>
+          </div>
+        </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-y-auto min-w-0">
-          <Tabs defaultValue="general" className="flex flex-col h-full">
-            <TabsList className="shrink-0 rounded-none border-b justify-start px-6 h-10 gap-1 bg-transparent">
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" onClick={() => router.back()} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isPending || !form.name.trim() || loading}
+            className="gap-2"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isPending ? "Saving…" : "Save Widget"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Form tabs */}
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      ) : (
+        <div className="rounded-xl border bg-card">
+          <Tabs defaultValue="general">
+            <TabsList className="w-full justify-start rounded-t-xl rounded-b-none border-b h-11 px-4 gap-1 bg-transparent">
               <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
               <TabsTrigger value="origins" className="text-xs">Origins</TabsTrigger>
               <TabsTrigger value="theme" className="text-xs">Theme</TabsTrigger>
               <TabsTrigger value="settings" className="text-xs">Settings</TabsTrigger>
+              {isEdit && <TabsTrigger value="categories" className="text-xs">Categories</TabsTrigger>}
               <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
             </TabsList>
 
             {/* General */}
-            <TabsContent value="general" className="px-6 py-5 space-y-4 mt-0">
+            <TabsContent value="general" className="px-6 py-6 space-y-5 mt-0">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Widget Name <span className="text-destructive">*</span>
@@ -224,9 +220,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
                   placeholder="Customer website support"
                   className="text-sm"
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Internal name shown in the portal only.
-                </p>
+                <p className="text-[11px] text-muted-foreground">Internal name — shown in the portal only.</p>
               </div>
 
               <div className="space-y-1.5">
@@ -242,23 +236,16 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Position
                   </Label>
-                  <Select
-                    value={form.position}
-                    onValueChange={(v) => set("position", v as WidgetPosition)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={form.position} onValueChange={(v) => set("position", v as WidgetPosition)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {POSITIONS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
+                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -294,19 +281,14 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
               <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium">Active</p>
-                  <p className="text-xs text-muted-foreground">
-                    Inactive widgets return 404 to the browser script.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Inactive widgets return 404 to the browser script.</p>
                 </div>
-                <Switch
-                  checked={form.is_active}
-                  onCheckedChange={(v) => set("is_active", v)}
-                />
+                <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
               </div>
             </TabsContent>
 
             {/* Origins */}
-            <TabsContent value="origins" className="px-6 py-5 mt-0">
+            <TabsContent value="origins" className="px-6 py-6 mt-0">
               <AllowedOriginsEditor
                 origins={form.allowed_origins}
                 onChange={(origins) => set("allowed_origins", origins)}
@@ -314,23 +296,24 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
             </TabsContent>
 
             {/* Theme */}
-            <TabsContent value="theme" className="px-6 py-5 mt-0">
-              <ThemeEditor
-                theme={form.theme}
-                onChange={(theme) => set("theme", theme)}
-              />
+            <TabsContent value="theme" className="px-6 py-6 mt-0">
+              <ThemeEditor theme={form.theme} onChange={(theme) => set("theme", theme)} />
             </TabsContent>
 
             {/* Settings */}
-            <TabsContent value="settings" className="px-6 py-5 mt-0">
-              <SettingsEditor
-                settings={form.settings}
-                onChange={(settings) => set("settings", settings)}
-              />
+            <TabsContent value="settings" className="px-6 py-6 mt-0">
+              <SettingsEditor settings={form.settings} onChange={(settings) => set("settings", settings)} />
             </TabsContent>
 
+            {/* Categories — own CRUD endpoints, only available once the widget has a numeric id */}
+            {isEdit && widget && (
+              <TabsContent value="categories" className="px-6 py-6 mt-0">
+                <CategoriesEditor widgetId={widget.id} />
+              </TabsContent>
+            )}
+
             {/* Advanced */}
-            <TabsContent value="advanced" className="px-6 py-5 space-y-4 mt-0">
+            <TabsContent value="advanced" className="px-6 py-6 space-y-5 mt-0">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Chat Context IDs
@@ -342,7 +325,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
                   className="text-sm font-mono"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs of context records for this widget. Leave empty to use account defaults.
+                  Comma-separated numeric IDs of context records. Leave empty to use account defaults.
                 </p>
               </div>
 
@@ -357,7 +340,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
                   className="text-sm font-mono"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs of knowledge base stores for this widget. Leave empty to use account defaults.
+                  Comma-separated numeric IDs of knowledge base stores. Leave empty to use account defaults.
                 </p>
               </div>
 
@@ -369,35 +352,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
             </TabsContent>
           </Tabs>
         </div>
-
-          {/* Live preview — real, interactive chat scoped to this widget's theme/settings */}
-          {/* <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-2 border-l bg-muted/30 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Live Preview
-            </p>
-            <div className="flex-1 rounded-2xl overflow-hidden border shadow-sm bg-background">
-              <ChatWidget
-                embedded
-                theme={form.theme}
-                settings={form.settings}
-                position={form.position}
-                welcomeMessage={form.welcome_message}
-                botNameOverride={form.settings.title || form.name || "Preview"}
-              />
-            </div>
-          </div> */}
-        </div>
-
-        <SheetFooter className="px-6 py-4 border-t shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isPending || !form.name.trim()} className="gap-2">
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isPending ? "Saving…" : "Save Widget"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      )}
+    </div>
   );
 }

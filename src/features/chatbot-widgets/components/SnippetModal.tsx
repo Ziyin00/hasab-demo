@@ -19,16 +19,45 @@ interface SnippetModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Keeps single-quoted HTML attributes safe when a value contains a quote, <, >, or &. */
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Builds the exact set of data-* attributes for a widget — the single source of
+ * truth for both the copied snippet and the displayed code block, so the two
+ * can never drift apart. theme/settings are serialized whole (not hand-mapped
+ * field by field) so every configured value — including nested launcher/mic/send
+ * overrides — is guaranteed to be carried into the tag exactly as saved. */
+function buildAttrs(widget: ChatbotWidget): [string, string][] {
+  return [
+    ["data-widget-id", widget.widget_id],
+    ["data-position", widget.position],
+    ["data-default-language", widget.default_language],
+    ["data-welcome-message", widget.welcome_message],
+    ["data-theme", JSON.stringify(widget.theme)],
+    ["data-settings", JSON.stringify(widget.settings)],
+  ];
+}
+
 export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) {
   const [copied, setCopied] = useState(false);
 
   if (!widget) return null;
 
-  const snippet =
-    widget.snippet ??
-    `<script\n  async\n  src="https://api.hasab.ai/widget/v1/hasab-chatbot.js"\n  data-widget-id="${widget.widget_id}">\n</script>`;
+  const attrs = buildAttrs(widget);
 
-  const cdnSnippet = `<script\n  async\n  src="https://cdn.hasab.ai/widget/v1/hasab-chatbot.js"\n  data-widget-id="${widget.widget_id}">\n</script>`;
+  const snippet = [
+    "<script",
+    "  async",
+    '  src="https://api.hasab.ai/widget/v1/hasab-chatbot.js"',
+    ...attrs.map(([key, value]) => `  ${key}='${escapeAttr(value)}'`),
+    "></script>",
+  ].join("\n");
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(snippet);
@@ -39,24 +68,25 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Embed Snippet — {widget.name}</DialogTitle>
           <DialogDescription>
             Paste this before the{" "}
             <code className="font-mono text-xs bg-muted px-1 rounded">&lt;/body&gt;</code> tag on
-            any page listed in your allowed origins.
+            any page listed in your allowed origins. Theme and settings are embedded directly in
+            the tag, so the widget renders with this exact configuration immediately — no separate
+            fetch required to match what you built here.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Current snippet */}
           <div className="space-y-1.5">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Current (API host)
+              Embed Snippet
             </p>
-            <div className="rounded-xl bg-[#1a1a2e] p-4 overflow-x-auto">
-              <pre className="text-sm leading-relaxed whitespace-pre">
+            <div className="rounded-xl bg-[#1a1a2e] p-4 overflow-x-auto max-h-80 overflow-y-auto">
+              <pre className="text-sm leading-relaxed whitespace-pre-wrap break-all">
                 <code>
                   <span className="text-[#7c7cff]">&lt;script</span>
                   {"\n  "}
@@ -65,36 +95,14 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
                   <span className="text-[#64d2ff]">src</span>
                   <span className="text-white">=</span>
                   <span className="text-[#ff9f43]">&quot;https://api.hasab.ai/widget/v1/hasab-chatbot.js&quot;</span>
-                  {"\n  "}
-                  <span className="text-[#64d2ff]">data-widget-id</span>
-                  <span className="text-white">=</span>
-                  <span className="text-[#ff9f43]">&quot;{widget.widget_id}&quot;</span>
-                  {">\n"}
-                  <span className="text-[#7c7cff]">&lt;/script&gt;</span>
-                </code>
-              </pre>
-            </div>
-          </div>
-
-          {/* Future CDN snippet */}
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Future (CDN host — swap src when cdn.hasab.ai is ready)
-            </p>
-            <div className="rounded-xl bg-[#1a1a2e] p-4 overflow-x-auto">
-              <pre className="text-sm leading-relaxed whitespace-pre">
-                <code>
-                  <span className="text-[#7c7cff]">&lt;script</span>
-                  {"\n  "}
-                  <span className="text-[#64d2ff]">async</span>
-                  {"\n  "}
-                  <span className="text-[#64d2ff]">src</span>
-                  <span className="text-white">=</span>
-                  <span className="text-[#ff9f43]">&quot;https://cdn.hasab.ai/widget/v1/hasab-chatbot.js&quot;</span>
-                  {"\n  "}
-                  <span className="text-[#64d2ff]">data-widget-id</span>
-                  <span className="text-white">=</span>
-                  <span className="text-[#ff9f43]">&quot;{widget.widget_id}&quot;</span>
+                  {attrs.map(([key, value]) => (
+                    <span key={key}>
+                      {"\n  "}
+                      <span className="text-[#64d2ff]">{key}</span>
+                      <span className="text-white">=</span>
+                      <span className="text-[#ff9f43]">&#39;{escapeAttr(value)}&#39;</span>
+                    </span>
+                  ))}
                   {">\n"}
                   <span className="text-[#7c7cff]">&lt;/script&gt;</span>
                 </code>
@@ -106,14 +114,19 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
             <p className="text-[11px] font-semibold text-primary">How the widget authenticates</p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              The script uses <strong>only</strong> the public <code className="font-mono bg-muted px-0.5 rounded">data-widget-id</code> to load config and create a short-lived visitor session token. No{" "}
-              <code className="font-mono bg-muted px-0.5 rounded">HASAB_KEY</code> or RSA private key is ever sent to the browser.
+              Only <code className="font-mono bg-muted px-0.5 rounded">data-widget-id</code> is used to
+              create a short-lived visitor session token and resolve knowledge base access. The{" "}
+              <code className="font-mono bg-muted px-0.5 rounded">data-theme</code> /{" "}
+              <code className="font-mono bg-muted px-0.5 rounded">data-settings</code> attributes are
+              public appearance config only. No{" "}
+              <code className="font-mono bg-muted px-0.5 rounded">HASAB_KEY</code> or RSA private key
+              is ever sent to the browser.
             </p>
           </div>
 
           <Button className="w-full gap-2" onClick={handleCopy}>
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? "Copied!" : "Copy Current Snippet"}
+            {copied ? "Copied!" : "Copy Snippet"}
           </Button>
         </div>
       </DialogContent>

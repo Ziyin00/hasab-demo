@@ -15,10 +15,25 @@ import {
   Clock,
   Activity,
   Tag,
+  Monitor,
+  Smartphone,
+  Tablet,
+  MapPin,
+  Link2,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { parseBrowser, parseOS } from "@/lib/user-agent";
+import { useCategories } from "@/features/chatbot-widgets/hooks/useCategories";
 import { analyticsApi } from "../api/analytics.api";
 import { useConversationDetail } from "../hooks/useConversations";
 
@@ -53,6 +68,15 @@ const SOURCE_BADGE: Record<string, string> = {
   mobile: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
+const DEVICE_ICON: Record<string, typeof Monitor> = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tablet: Tablet,
+};
+
+const emdash = (v: string | number | null | undefined): string =>
+  v === null || v === undefined || v === "" ? "—" : String(v);
+
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3">
@@ -79,6 +103,17 @@ export function ConversationDetailPage({ id }: Props) {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
     onError: () => toast.error("Failed to submit feedback"),
+  });
+
+  const { data: categories } = useCategories(data?.chatbot_widget_id ?? 0);
+  const { mutate: changeCategory, isPending: categoryPending } = useMutation({
+    mutationFn: analyticsApi.updateCategory,
+    onSuccess: () => {
+      toast.success("Category updated");
+      queryClient.invalidateQueries({ queryKey: ["conversation", id] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+    onError: () => toast.error("Failed to update category"),
   });
 
   const firstMsgAt = data?.messages[0]?.created_at;
@@ -200,6 +235,42 @@ export function ConversationDetailPage({ id }: Props) {
                   </InfoRow>
                 )}
 
+                {data?.chatbot_widget && (
+                  <InfoRow label="Widget">
+                    <span className="text-xs">{data.chatbot_widget.name}</span>
+                  </InfoRow>
+                )}
+
+                <InfoRow label="Category">
+                  <div className="flex flex-col items-end gap-1">
+                    <Select
+                      value={data?.category?.id != null ? String(data.category.id) : "uncategorized"}
+                      onValueChange={(v) =>
+                        changeCategory({ id, category_id: v === "uncategorized" ? null : Number(v) })
+                      }
+                      disabled={categoryPending || !data?.chatbot_widget_id}
+                    >
+                      <SelectTrigger className="h-7 w-37.5 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                        {(categories ?? []).map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {data?.category?.id != null && data?.category_source && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {data.category_source === "auto" ? "Auto-classified" : "Manually set"}
+                        {data.category_source === "auto" && data.category_confidence != null
+                          ? ` · ${Math.round(data.category_confidence * 100)}%`
+                          : ""}
+                      </span>
+                    )}
+                  </div>
+                </InfoRow>
+
                 {data?.language && (
                   <InfoRow label="Language">
                     <span className="text-xs flex items-center gap-1">
@@ -222,6 +293,94 @@ export function ConversationDetailPage({ id }: Props) {
                     </a>
                   </InfoRow>
                 )}
+
+                {/* ── Device & network ── */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-t pt-3">
+                  Device &amp; Network
+                </p>
+
+                <InfoRow label="Device">
+                  <span className="text-xs flex items-center justify-end gap-1">
+                    {(() => {
+                      const type = data?.client_metadata?.device_type;
+                      const Icon = (type && DEVICE_ICON[type]) || Monitor;
+                      return <Icon className="h-3 w-3 text-muted-foreground" />;
+                    })()}
+                    {emdash(data?.client_metadata?.device_type)}
+                  </span>
+                </InfoRow>
+
+                <InfoRow label="IP Address">
+                  <span className="text-xs font-mono">{emdash(data?.client_ip)}</span>
+                </InfoRow>
+
+                <InfoRow label="Browser">
+                  <span className="text-xs" title={data?.user_agent ?? undefined}>
+                    {data?.user_agent
+                      ? `${parseBrowser(data.user_agent)} · ${parseOS(data.user_agent)}`
+                      : "—"}
+                  </span>
+                </InfoRow>
+
+                <InfoRow label="Screen">
+                  <span className="text-xs flex items-center justify-end gap-1">
+                    <Monitor className="h-3 w-3 text-muted-foreground" />
+                    {data?.client_metadata?.screen_width && data?.client_metadata?.screen_height
+                      ? `${data.client_metadata.screen_width} × ${data.client_metadata.screen_height}`
+                      : "—"}
+                  </span>
+                </InfoRow>
+
+                <InfoRow label="Viewport">
+                  <span className="text-xs flex items-center justify-end gap-1">
+                    <ScanLine className="h-3 w-3 text-muted-foreground" />
+                    {data?.client_metadata?.viewport_width && data?.client_metadata?.viewport_height
+                      ? `${data.client_metadata.viewport_width} × ${data.client_metadata.viewport_height}`
+                      : "—"}
+                  </span>
+                </InfoRow>
+
+                <InfoRow label="Timezone">
+                  <span className="text-xs flex items-center justify-end gap-1">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    {emdash(data?.client_metadata?.timezone)}
+                  </span>
+                </InfoRow>
+
+                <InfoRow label="Browser Lang.">
+                  <span className="text-xs">{emdash(data?.client_metadata?.browser_language)}</span>
+                </InfoRow>
+
+                <InfoRow label="Platform">
+                  <span className="text-xs">{emdash(data?.client_metadata?.platform)}</span>
+                </InfoRow>
+
+                {data?.origin && (
+                  <InfoRow label="Origin">
+                    <span className="text-xs flex items-center justify-end gap-1 max-w-[140px] truncate">
+                      <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                      {data.origin}
+                    </span>
+                  </InfoRow>
+                )}
+
+                {data?.referrer && (
+                  <InfoRow label="Referrer">
+                    <a
+                      href={data.referrer}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary flex items-center gap-1 hover:underline max-w-[140px] truncate"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      {safePathname(data.referrer)}
+                    </a>
+                  </InfoRow>
+                )}
+
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-t pt-3">
+                  Activity
+                </p>
 
                 <InfoRow label="Messages">
                   <span className="text-xs flex items-center justify-end gap-1">

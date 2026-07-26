@@ -142,7 +142,7 @@ export function ThemeEditor({ theme, onChange }: ThemeEditorProps) {
 
       <SectionHeader title="Mic Button" />
 
-      <TextField label="Idle Label" value={theme.mic?.label} onChange={(v) => setMic("label", v)} placeholder="Talk" />
+      <TextField label="Idle Label" value={theme.mic?.label} onChange={(v) => setMic("label", v)} placeholder="" />
       <TextField label="Recording Label" value={theme.mic?.recording_label} onChange={(v) => setMic("recording_label", v)} placeholder="Stop" />
       <TextField label="Processing Label" value={theme.mic?.processing_label} onChange={(v) => setMic("processing_label", v)} placeholder="Wait" />
       <TextField label="Idle Icon URL" value={theme.mic?.icon_url ?? ""} onChange={(v) => setMic("icon_url", v || null)} placeholder="https://..." />

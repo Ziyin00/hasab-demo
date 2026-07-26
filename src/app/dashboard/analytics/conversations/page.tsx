@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ConversationsPage } from "@/features/analytics/components/ConversationsPage";
 
 export default function Page() {
-  redirect("/dashboard/analytics");
+  return <ConversationsPage />;
 }

@@ -1,31 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Bot, ShieldCheck, Clock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChatbotWidgets } from "../hooks/useChatbotWidgets";
 import { WidgetCard } from "./WidgetCard";
-import { WidgetSheet } from "./WidgetSheet";
 import { SnippetModal } from "./SnippetModal";
 import type { ChatbotWidget } from "../types/chatbot-widget.types";
 
 export function ChatbotWidgetsPage() {
+  const router = useRouter();
   const { data: widgets, isLoading } = useChatbotWidgets();
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingWidget, setEditingWidget] = useState<ChatbotWidget | null>(null);
   const [snippetWidget, setSnippetWidget] = useState<ChatbotWidget | null>(null);
-
-  const openCreate = () => {
-    setEditingWidget(null);
-    setSheetOpen(true);
-  };
-
-  const openEdit = (widget: ChatbotWidget) => {
-    setEditingWidget(widget);
-    setSheetOpen(true);
-  };
 
   return (
     <div className="space-y-8">
@@ -38,7 +26,7 @@ export function ChatbotWidgetsPage() {
             to paste on any webpage.
           </p>
         </div>
-        <Button onClick={openCreate} className="shrink-0 gap-2">
+        <Button onClick={() => router.push("/dashboard/widgets/new")} className="shrink-0 gap-2">
           <Plus className="h-4 w-4" />
           New Widget
         </Button>
@@ -94,7 +82,7 @@ export function ChatbotWidgetsPage() {
               Create your first chatbot widget to get an embed snippet.
             </p>
           </div>
-          <Button onClick={openCreate} className="gap-2">
+          <Button onClick={() => router.push("/dashboard/widgets/new")} className="gap-2">
             <Plus className="h-4 w-4" />
             Create Widget
           </Button>
@@ -105,19 +93,11 @@ export function ChatbotWidgetsPage() {
             <WidgetCard
               key={widget.id}
               widget={widget}
-              onEdit={openEdit}
               onSnippet={(w) => setSnippetWidget(w)}
             />
           ))}
         </div>
       )}
-
-      {/* Create / edit sheet */}
-      <WidgetSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        widget={editingWidget}
-      />
 
       {/* Snippet modal */}
       <SnippetModal

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useWidgetConfig } from "@/features/widget/hooks/useWidget";
 import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { buildClientMetadata } from "@/lib/client-metadata";
 
 interface Message {
   role: "user" | "assistant";
@@ -95,6 +96,9 @@ export function ChatPage() {
       const r = await apiClient.post("/chat", {
         message: trimmed,
         model: "hasab-1-lite",
+        source: "web",
+        page_url: window.location.href,
+        client_metadata: buildClientMetadata(),
       });
       const content = r.data?.message?.content ?? r.data?.data?.message ?? "No response received.";
       setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
