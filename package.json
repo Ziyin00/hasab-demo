@@ -5,8 +5,9 @@
   "packageManager": "pnpm@10.29.2",
   "scripts": {
     "dev": "next dev -p 5137",
-    "build": "opennextjs-cloudflare build",
-    "build:next": "next build",
+    "build": "node scripts/build.mjs",
+    "build:next": "node scripts/build-next-only.mjs",
+    "build:cf": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",

@@ -4,5 +4,5 @@ const config = defineCloudflareConfig({});
 
 export default {
   ...config,
-  buildCommand: "pnpm run build:next",
+  buildCommand: "node scripts/build-next-only.mjs",
 };
