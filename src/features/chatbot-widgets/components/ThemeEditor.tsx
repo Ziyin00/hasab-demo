@@ -2,7 +2,14 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { ChatbotWidgetTheme } from "../types/chatbot-widget.types";
+import { ColorPicker } from "./ColorPicker";
 
 interface ThemeEditorProps {
   theme: ChatbotWidgetTheme;
@@ -19,21 +26,49 @@ function ColorField({
   onChange: (v: string) => void;
 }) {
   const val = value ?? "#000000";
+
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </Label>
-      <div className="flex gap-2 items-center">
-        <div className="relative h-9 w-9 rounded-md overflow-hidden border shrink-0">
-          <input
-            type="color"
-            className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-            value={val}
-            onChange={(e) => onChange(e.target.value)}
-          />
-          <div className="absolute inset-0 rounded-md" style={{ background: val }} />
-        </div>
+      <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Pick ${label}`}
+              className={cn(
+                "relative h-9 w-9 shrink-0 rounded-md border border-border shadow-sm",
+                "ring-offset-background transition-shadow",
+                "hover:ring-2 hover:ring-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+              style={{ backgroundColor: val }}
+            >
+              <span className="sr-only">Open color picker</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            sideOffset={6}
+            className="w-auto border-0 bg-transparent p-0 shadow-none"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            onInteractOutside={(e) => {
+              // Don't close while dragging a slider thumb past the panel edge
+              if ((e.target as HTMLElement | null)?.closest?.("[data-color-picker]")) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <div
+              data-color-picker
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <ColorPicker value={val} onChange={onChange} label={label} />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Input
           value={val}
           onChange={(e) => onChange(e.target.value)}
@@ -73,7 +108,7 @@ function TextField({
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1 col-span-full">
+    <p className="col-span-full border-b pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
       {title}
     </p>
   );
