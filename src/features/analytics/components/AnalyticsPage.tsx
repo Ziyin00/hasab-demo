@@ -107,7 +107,11 @@ export function AnalyticsPage() {
           label="Satisfaction"
           icon={<ThumbsUp className="h-4 w-4" />}
           iconColor="#22C55E"
-          value={summary?.satisfaction_rate != null ? `${summary.satisfaction_rate.toFixed(0)}%` : "—"}
+          value={
+            summary?.satisfaction_rate != null
+              ? `${Math.round(summary.satisfaction_rate * 100)}%`
+              : "—"
+          }
           sub={
             summary?.satisfaction_rate != null && summary.satisfaction_sample_size > 0
               ? `${summary.satisfaction_sample_size} ratings`

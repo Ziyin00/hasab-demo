@@ -7,6 +7,7 @@ export interface AnalyticsSummary {
   total_conversations: number;
   avg_response_time_ms: number;
   avg_response_time_display: string;
+  /** Fraction of rated conversations that are positive (0–1), or null if none rated. */
   satisfaction_rate: number | null;
   satisfaction_sample_size: number;
   changes: {
