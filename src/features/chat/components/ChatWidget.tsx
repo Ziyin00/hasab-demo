@@ -85,6 +85,15 @@ const LANG_OPTIONS: { value: Lang; native: string }[] = [
   { value: "om", native: "Afaan Oromoo" },
 ];
 
+// Normalises any code variant (amh/am, orm/om, eng/en) to the LANG_STRINGS key.
+// Widget settings.languages may use ISO 639-3 codes ("amh", "orm") while
+// LANG_STRINGS uses the short codes ("am", "om") — both must resolve correctly.
+function toLangKey(code: string): Lang {
+  if (code === "am" || code === "amh") return "am";
+  if (code === "om" || code === "orm") return "om";
+  return "en";
+}
+
 // ─── Audio utilities (mirrors fayda-demo.html) ───────────────────────────────
 
 function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
@@ -412,7 +421,7 @@ export function ChatWidget({
     const stored = localStorage.getItem("hasabChatLang");
     if (stored) setLang(stored);
   }, []);
-  const ui = LANG_STRINGS[lang as Lang] ?? LANG_STRINGS.en;
+  const ui = LANG_STRINGS[toLangKey(lang)];
   const languageOptions = settings?.languages?.length
     ? settings.languages
     : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
@@ -424,7 +433,7 @@ export function ChatWidget({
   const updateLangContext = async (l: string) => {
     const label = languageOptions.find((o) => o.code === l)?.label ?? l;
     const instruction =
-      LANG_STRINGS[l as Lang]?.contextInstruction ??
+      LANG_STRINGS[toLangKey(l)]?.contextInstruction ??
       `CRITICAL: You MUST respond ONLY in ${label}. Do not use any other language.`;
     try {
       const r = await apiClient.get("/chat/context");

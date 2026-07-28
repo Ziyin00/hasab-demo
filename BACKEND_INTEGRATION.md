@@ -1,6 +1,6 @@
 # Hasab Backend Integration Guide
 
-**Last updated:** 2026-07-26  
+**Last updated:** 2026-07-27  
 **Reference implementation:** `src/features/chat/components/ChatWidget.tsx`  
 **CDN script target:** `https://api.hasab.ai/widget/v1/hasab-chatbot.js`
 
@@ -21,26 +21,26 @@ This document is the authoritative specification for everything the backend must
 9. [Session & Security Model](#9-session--security-model)
 10. [Client Metadata](#10-client-metadata)
 11. [Data Models (Full Schemas)](#11-data-models-full-schemas)
+12. [CDN Script Layout Bugs — Preview vs Live Diff](#12-cdn-script-layout-bugs--preview-vs-live-diff-2026-07-27)
 
 ---
 
 ## 1. System Overview
 
 ```
-Dashboard (hasab-demo)           Customer Site
-       │                               │
-       │  CRUD /chatbot-widgets        │  <script data-widget-id="...">
-       ├──────────────────────►        │           │
-       │                       Backend │           │ hasab-chatbot.js
-       │  POST /chat ◄──────────────── │ ◄─────────┘
-       │  POST /upload-audio           │
-       │  POST /chat/context           │
-       │  GET  /analytics              │
+Dashboard (hasab-demo)                    Customer Site
+       │                                        │
+       │  CRUD /chatbot-widgets                 │  <script data-widget-id="...">
+       ├──────────────────────► Backend         │           │
+       │  POST /chat                            │           ▼ hasab-chatbot.js
+       │  POST /upload-audio          ◄─────────┼─── POST /chat
+       │  POST /chat/context  ◄── dashboard     │    POST /upload-audio
+       │  GET  /analytics             only      │    (language via body, not /chat/context)
 ```
 
 The admin builds a widget in the dashboard → gets an embed snippet → pastes it on their site. The CDN script (`hasab-chatbot.js`) parses `data-*` attributes from the script tag and renders a chat bubble that must look and behave identically to `ChatWidget.tsx`.
 
-**Two clients, one API.** The dashboard's `ChatWidget.tsx` and the CDN script both hit the same backend endpoints. The CDN script must replicate `ChatWidget.tsx` exactly — same localStorage keys, same request payloads, same rendering logic. Any drift between them means the preview in the dashboard lies to the admin.
+**Same rendering, different API surface.** The CDN script and the dashboard preview share the same visual contract and storage keys, but differ in one key area: language preference. The dashboard calls `/chat/context` to push a "Language Preference" system prompt; the CDN script sends the `language` field in the chat body instead, and the backend injects the language instruction server-side for widget sessions. Everything else — storage keys, chat payload shape, audio upload, session lifecycle — is identical.
 
 ---
 
@@ -232,7 +232,9 @@ Only shown when `settings.features.audio_upload === true`. The mic button must n
 
 ## 5. Language Context API
 
-The widget pushes the visitor's selected language as a server-side context so the LLM responds in the correct language. This mirrors the session management approach used in the production Fayda demo.
+> **Scope: Dashboard preview only.** The CDN script (`hasab-chatbot.js`) does **not** call these endpoints — it sends the `language` field in the `POST /chat` body and the backend injects the language system prompt server-side for widget sessions. Only the dashboard's `ChatWidget.tsx` uses the context API below.
+
+The dashboard preview pushes the visitor's selected language as a server-side context so the LLM responds in the correct language.
 
 ### `GET /chat/context`
 
@@ -255,9 +257,9 @@ Returns existing contexts for the current session.
 
 Removes a context by ID.
 
-#### Update flow
+#### Update flow (dashboard preview only)
 
-When the visitor changes language (or the widget opens), the frontend:
+When the visitor changes language (or the widget opens), the dashboard:
 1. Fetches all contexts (`GET /chat/context`)
 2. Deletes every existing `"Language Preference"` context
 3. Waits 300ms (debounce)
@@ -274,6 +276,10 @@ Built-in instruction strings:
 
 Where `{label}` is the `label` field from the matching entry in `settings.languages`.
 
+#### CDN script language flow
+
+The CDN script sets language only via the chat body `language` field. The backend must inject the appropriate system prompt for widget sessions based on this field — no context API call is made by the embed.
+
 ---
 
 ## 6. Category API
@@ -288,7 +294,7 @@ Categories allow auto-classification of conversations into named buckets. Only a
 | `POST` | `/chatbot-widgets/:id/categories` | Create category |
 | `PATCH` | `/chatbot-widgets/:id/categories/:catId` | Update category |
 | `DELETE` | `/chatbot-widgets/:id/categories/:catId` | Delete category |
-| `PATCH` | `/chatbot-widgets/:id/categories/reorder` | Reorder categories |
+| `POST` or `PATCH` | `/chatbot-widgets/:id/categories/reorder` | Reorder categories |
 
 ### Category schema
 
@@ -605,15 +611,23 @@ When a user message was sent via voice (`isVoice: true`), render a mini audio pl
 - Progress highlight up to current playback position
 - Toggle play/pause, show current time while playing / total duration while stopped
 
-### 8.15 LocalStorage keys
+### 8.15 Storage keys (exact)
+
+**localStorage** — long-lived, shared between dashboard preview and CDN snippet:
 
 | Key | Value | Lifetime |
 |---|---|---|
 | `hasab_visitor_session_id` | UUID | Permanent (never expires client-side) |
-| `hasab_chat_history_id` | integer string | Until new conversation or page close |
+| `hasab_chat_history_id` | integer string | Until new conversation or reset |
 | `hasabChatLang` | language code | Until visitor changes it |
 
-These exact key names must be used. The dashboard's `ChatWidget.tsx` uses them too — a visitor who tests the widget in the dashboard and then visits the embedded snippet on the customer site will appear as the same session.
+**sessionStorage** — CDN script only, scoped per browser tab:
+
+| Key | Value | Lifetime |
+|---|---|---|
+| `hasab_widget_{widgetId}_session_token` | short-lived Bearer token | Tab session |
+
+The localStorage keys must match exactly between the dashboard preview and the CDN script — a visitor who tests the widget in the dashboard and then visits the embedded snippet on the customer site will appear as the same returning visitor and continue their conversation.
 
 ---
 
@@ -641,24 +655,27 @@ Tab closed. Re-opened within 24h.
 ### Widget authentication (CDN script)
 
 The CDN script uses `data-widget-id` to identify which widget is being used. The backend should:
-1. On first request for a `widget_id`, validate that the request `Origin` header matches `allowed_origins` for that widget
+1. Validate that the request `Origin` header matches `allowed_origins` for that widget — reject with **`403`** if not
 2. Issue a short-lived visitor session token tied to `widget_id` + `visitor_session_id`
-3. Validate this token on subsequent chat requests
+3. Store the token in `sessionStorage` under key `hasab_widget_{widgetId}_session_token`
+4. Send the token as `Authorization: Bearer <token>` on subsequent chat requests
+5. On **`401`** (token expired/invalid), refresh the token and retry the request automatically
 
 `data-theme` and `data-settings` are public appearance config — they contain no secrets and must not be treated as sensitive. No `HASAB_KEY` or private keys are ever sent to the browser.
 
+### Error codes — embeds
+
+| HTTP | Meaning | CDN script action |
+|---|---|---|
+| `401` | Bad or expired session token | Refresh token, retry once |
+| `403` | Request origin not in `allowed_origins` | Surface error — admin must add origin to widget allowlist |
+| `404` on chat | Stale `chat_history_id` (idle > 24h) | Clear `chat_history_id`, retry with `new_conversation: true` |
+
+**Important for embed testing:** `403` means the site's origin is not in the widget's `allowed_origins` list — it is not a session expiry. Do not treat every non-200 as a token problem. Add the customer origin to the widget allowlist in the dashboard and retry.
+
 ### CORS
 
-Enforce `allowed_origins` at the chat endpoint level. Requests from origins not in the list for the given `widget_id` must be rejected with `403`. This is the most likely cause of the recurring `"Invalid or expired widget session"` errors seen in live testing (see §9 — Bug).
-
-### Known session bug
-
-**"Invalid or expired widget session" is appearing as a chat message on every send** in the live embedded widget. Root-cause investigation needed on the token service:
-- Is the token being issued correctly for this `widget_id`?
-- Is it expiring mid-conversation with no refresh path?
-- Is an `allowed_origins` / CORS mismatch causing the backend to reject requests before they reach the chat handler?
-
-This is independent of the rendering fixes and must be resolved for the widget to be functional end-to-end.
+Enforce `allowed_origins` at the chat endpoint level with a **`403`** response and body `{ "message": "Origin not allowed for this widget" }`. A **`401`** must only be returned for genuine token failures, not origin mismatches — conflating the two was the root cause of the recurring "Invalid or expired widget session" error in live testing.
 
 ---
 
@@ -831,10 +848,134 @@ interface Conversation {
 
 ---
 
+## 12. CDN Script Layout Bugs — Preview vs Live Diff (2026-07-27)
+
+Live comparison between the dashboard preview (`ChatWidget.tsx`) and the actual embedded snippet confirmed the following rendering differences. All of them are CDN script bugs — **none require backend API changes**.
+
+---
+
+### 12.1 Root cause — Amharic incorrectly treated as RTL ⚠️
+
+**This single bug causes the majority of layout flips below.**
+
+The CDN script appears to apply `direction: rtl` (or `flex-direction: row-reverse`) when the selected language is Amharic (`am` / `amh`). **Amharic uses the Ethiopic script which is strictly left-to-right.** It is not RTL.
+
+**Fix:** Never apply RTL direction for any of the three supported languages. None of them are RTL:
+
+| Language | Code | Script | Direction |
+|---|---|---|---|
+| English | `en` / `eng` | Latin | LTR ✓ |
+| Amharic | `am` / `amh` | Ethiopic (Ge'ez) | **LTR ✓** |
+| Afaan Oromoo | `om` / `orm` | Latin | LTR ✓ |
+
+The CDN script must always render with `direction: ltr`. Do not derive text direction from the language code.
+
+---
+
+### 12.2 Quick-prompt chips — layout is mirrored
+
+**Dashboard preview (correct):**
+```
+[ 26px spacer ] [ pricing chip ──────────── ]
+[ HA avatar  ] [ support chip ──────────── ]   ← avatar left of last chip
+```
+
+**Embedded snippet (wrong — caused by RTL bug §12.1):**
+```
+[ ──────────── pricing chip ] [ 26px spacer ]
+[ ─────────── support chip ] [ HA avatar   ]   ← avatar right of last chip
+```
+
+**Exact layout each row must render (LTR, matching `ChatWidget.tsx`):**
+
+```html
+<div style="display:flex; align-items:center; gap:8px;">
+  <!-- spacer OR avatar — always on the LEFT -->
+  <div style="width:26px; flex-shrink:0;" />        <!-- non-last rows -->
+  <!-- OR -->
+  <img ... />                                        <!-- last row: bot avatar 26px -->
+
+  <button style="flex:1; text-align:left;">
+    {chip label}
+  </button>
+</div>
+```
+
+The avatar appears on the **left** of the **last** chip only. All other rows use a 26px invisible spacer on the left.
+
+---
+
+### 12.3 Welcome message — missing left spacer
+
+**Dashboard preview (correct):**
+```
+[ 26px spacer ] [ "Hi, how can I help?" bubble ── ]
+```
+
+**Embedded snippet (wrong):**
+```
+[ "Hi, how can I help?" bubble ────────────────── ]   ← no spacer, flush to edge
+```
+
+**Fix:** The welcome message row must use the same 26px left spacer as the non-last chip rows above:
+
+```html
+<div style="display:flex; align-items:flex-start; gap:8px; width:100%;">
+  <div style="width:26px; flex-shrink:0;" />   <!-- 26px spacer, not avatar -->
+  <div style="flex:1; /* bubble styles */">
+    {welcomeMessage}
+  </div>
+</div>
+```
+
+---
+
+### 12.4 Mic button — appears on left instead of right
+
+**Dashboard preview (correct):** input text → … → mic button on **RIGHT**
+
+**Embedded snippet (wrong):** mic button on **LEFT** → input text → …
+
+This is a direct consequence of the RTL bug (§12.1) reversing the flex row order of the input area. With `direction: ltr` restored, the input area naturally renders as:
+
+```
+[ text input ·············· ] [ mic icon ]   ← mic always RIGHT
+```
+
+No additional fix needed beyond correcting §12.1.
+
+---
+
+### 12.5 "Today" separator — wrong capitalisation
+
+**Dashboard preview (correct):** `Today`
+
+**Embedded snippet (wrong):** `TODAY`
+
+**Fix:** Render the date separator as title-case `Today`, not all-caps. Do not apply `text-transform: uppercase` to this element.
+
+---
+
+### 12.6 Summary table
+
+| # | Element | Expected (dashboard) | Actual (snippet) | Root cause |
+|---|---|---|---|---|
+| 12.1 | Text direction | LTR always | RTL for Amharic | Wrong `direction: rtl` |
+| 12.2 | Chip layout | `[avatar/spacer][chip]` | `[chip][avatar/spacer]` | RTL flip |
+| 12.3 | Welcome message | 26px left spacer | No spacer | RTL flip |
+| 12.4 | Mic button | Right of input | Left of input | RTL flip |
+| 12.5 | Date separator | `Today` | `TODAY` | `text-transform: uppercase` |
+
+Fixing §12.1 (remove RTL for Amharic) resolves §12.2, §12.3, and §12.4 simultaneously. §12.5 is a separate one-line CSS fix.
+
+---
+
 ## Priority Order for Backend Work
 
 1. **Fix session token bug** (§9) — widget is nonfunctional without this
-2. **CDN script icon fixes** (§8.6, §8.10, §8.11) — mic/send/launcher rendering bare text instead of icons
-3. **Mobile responsive sizing** (§8.4) — `min()` viewport capping folded into `width`/`height`
-4. **Category auto-classification** (§6) — classifying conversations post-send
-5. **Analytics `by_category` breakdown** (§7) — needed for the category breakdown chart in the dashboard
+2. **Fix RTL/layout bug for Amharic** (§12.1) — flips chip layout, welcome message spacer, and mic button position simultaneously
+3. **CDN script icon fixes** (§8.6, §8.10, §8.11) — mic/send/launcher rendering bare text instead of icons
+4. **Fix "Today" capitalisation** (§12.5) — one-line CSS fix
+5. **Mobile responsive sizing** (§8.4) — `min()` viewport capping folded into `width`/`height`
+6. **Category auto-classification** (§6) — classifying conversations post-send
+7. **Analytics `by_category` breakdown** (§7) — needed for the category breakdown chart in the dashboard
