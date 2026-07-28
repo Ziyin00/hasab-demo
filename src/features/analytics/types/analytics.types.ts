@@ -5,6 +5,14 @@ export type AnalyticsRange = "7d" | "14d" | "30d" | "90d";
 export interface AnalyticsSummary {
   total_messages: number;
   total_conversations: number;
+  conversations_replied: number;
+  conversations_abandoned: number;
+  unique_visitors: number;
+  returning_visitors: number;
+  positive_ratings: number;
+  negative_ratings: number;
+  uncategorized_conversations: number;
+  avg_messages_per_conversation: number;
   avg_response_time_ms: number;
   avg_response_time_display: string;
   /** Fraction of rated conversations that are positive (0–1), or null if none rated. */
@@ -13,14 +21,26 @@ export interface AnalyticsSummary {
   changes: {
     messages_percent: number;
     conversations_percent: number;
+    satisfaction_percent: number | null;
+    response_time_percent: number | null;
   };
 }
 
 export interface TrendPoint {
   date: string;
   label: string;
-  messages: number;
+  conversations_started: number;
   conversations: number;
+  conversations_replied: number;
+  conversations_abandoned: number;
+  messages: number;
+  user_messages: number;
+  assistant_messages: number;
+  unique_visitors: number;
+  avg_response_time_ms: number | null;
+  ratings_positive: number;
+  ratings_negative: number;
+  satisfaction_rate: number | null;
 }
 
 export interface CategoryBreakdown {
@@ -28,23 +48,99 @@ export interface CategoryBreakdown {
   name: string;
   slug: string;
   conversations_count: number;
+  /** Fraction 0–1 */
   share: number;
+}
+
+export interface SourceBreakdown {
+  source: string;
+  conversations_count: number;
+  /** Fraction 0–1 */
+  share: number;
+}
+
+export interface LanguageBreakdown {
+  language: string;
+  conversations_count: number;
+  /** Fraction 0–1 */
+  share: number;
+}
+
+export interface DeviceBreakdown {
+  device_type: string;
+  conversations_count: number;
+  /** Fraction 0–1 */
+  share: number;
+}
+
+export interface TopPage {
+  page_url: string;
+  conversations_count: number;
+}
+
+export interface HourBucket {
+  hour: number;
+  label: string;
+  conversations_count: number;
+  messages_count: number;
+}
+
+export interface ResponseTimeStats {
+  avg_ms: number | null;
+  p50_ms: number | null;
+  p95_ms: number | null;
+  display: string | null;
+}
+
+export interface ClassificationCoverage {
+  classified: number;
+  total: number;
+  /** Fraction 0–1 */
+  percent: number;
+  display: string;
+}
+
+export interface WidgetStatusInfo {
+  id: number;
+  widget_id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface WidgetStatus {
+  widget: WidgetStatusInfo | null;
+  last_conversation_at: string | null;
+  conversations_last_24h: number;
+  messages_last_24h: number;
+  avg_response_time_ms_last_24h: number | null;
+  classification_backlog: number;
+  /** Fraction 0–1 */
+  uncategorized_share_last_7d: number;
 }
 
 export interface AnalyticsData {
   range: AnalyticsRange;
   from: string;
   to: string;
+  chatbot_widget_id: number | null;
   summary: AnalyticsSummary;
   trend: TrendPoint[];
   by_category: CategoryBreakdown[];
+  by_source: SourceBreakdown[];
+  by_language: LanguageBreakdown[];
+  by_device: DeviceBreakdown[];
+  top_pages: TopPage[];
+  by_hour: HourBucket[];
+  response_time: ResponseTimeStats;
+  classification_coverage: ClassificationCoverage;
+  widget_status: WidgetStatus | null;
   last_updated: string;
 }
 
 export interface ConversationCategory {
   id: number | null;
   name: string;
-  slug: string; // "uncategorized" when id is null
+  slug: string;
 }
 
 export interface ConversationWidgetRef {

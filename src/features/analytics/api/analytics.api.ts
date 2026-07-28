@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import { normalizeAnalyticsData } from "./normalizeAnalytics";
 import type {
   AnalyticsData,
   AnalyticsRange,
@@ -10,7 +11,7 @@ import type {
 export const analyticsApi = {
   get: async (range: AnalyticsRange = "30d", chatbot_widget_id?: number): Promise<AnalyticsData> => {
     const r = await apiClient.get("/chat/analytics", { params: { range, chatbot_widget_id } });
-    return r.data.data;
+    return normalizeAnalyticsData(r.data.data);
   },
 
   getConversations: async (params: ConversationsFilter): Promise<ConversationsData> => {
