@@ -24,6 +24,6 @@
     "enabled": true
   },
   "build": {
-    "command": "pnpm exec opennextjs-cloudflare build"
+    "command": "node scripts/build.mjs"
   }
 }

@@ -8,10 +8,11 @@
     "build": "node scripts/build.mjs",
     "build:next": "node scripts/build-next-only.mjs",
     "build:cf": "opennextjs-cloudflare build",
+    "cf:deploy": "node scripts/cloudflare-deploy.mjs",
     "start": "next start",
     "lint": "eslint",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy": "node scripts/cloudflare-deploy.mjs",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
