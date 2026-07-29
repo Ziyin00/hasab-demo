@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Bot, ShieldCheck, Clock, Globe } from "lucide-react";
+import { Plus, Bot, ShieldCheck, Clock, Globe, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChatbotWidgets } from "../hooks/useChatbotWidgets";
@@ -33,7 +33,7 @@ export function ChatbotWidgetsPage() {
       </div>
 
       {/* How it works */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex gap-3 items-start rounded-xl border bg-muted/20 px-4 py-3">
           <Globe className="h-4 w-4 text-primary mt-0.5 shrink-0" />
           <div>
@@ -53,12 +53,14 @@ export function ChatbotWidgetsPage() {
             </p>
           </div>
         </div>
+        
+        
         <div className="flex gap-3 items-start rounded-xl border bg-muted/20 px-4 py-3">
-          <Clock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <Languages className="h-4 w-4 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs font-semibold">Rate Limiting</p>
+            <p className="text-xs font-semibold">Multilingual Ready</p>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-              Each widget has its own per-minute request limit. Tune it per use-case to control costs.
+              Visitors can switch language in the widget. Quick prompts, welcome text, and UI labels update automatically.
             </p>
           </div>
         </div>

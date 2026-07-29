@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type { ChatbotWidgetSettings, LanguageOption, QuickPrompt } from "../types/chatbot-widget.types";
+import type {
+  ChatbotWidgetSettings,
+  QuickPromptsMultilingual,
+} from "../types/chatbot-widget.types";
+import { normalizeQuickPrompts } from "../utils/quickPrompts";
+import { QuickPromptsEditor } from "./QuickPromptsEditor";
 
 interface SettingsEditorProps {
   settings: ChatbotWidgetSettings;
@@ -30,72 +35,106 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
     val: boolean
   ) => onChange({ ...settings, features: { ...settings.features, [key]: val } });
 
-  // Language management
+  const languages = settings.languages ?? [];
+
+  const promptsByLang: QuickPromptsMultilingual = useMemo(
+    () => normalizeQuickPrompts(settings.quick_prompts, languages),
+    [settings.quick_prompts, languages]
+  );
+
   const [langCode, setLangCode] = useState("");
   const [langLabel, setLangLabel] = useState("");
 
   const addLanguage = () => {
-    if (!langCode.trim() || !langLabel.trim()) return;
-    const langs = settings.languages ?? [];
-    if (langs.some((l) => l.code === langCode.trim())) return;
-    set("languages", [...langs, { code: langCode.trim(), label: langLabel.trim() }]);
+    const code = langCode.trim();
+    const label = langLabel.trim();
+    if (!code || !label) return;
+    if (languages.some((l) => l.code === code)) return;
+
+    onChange({
+      ...settings,
+      languages: [...languages, { code, label }],
+      quick_prompts: { ...promptsByLang, [code]: promptsByLang[code] ?? [] },
+    });
     setLangCode("");
     setLangLabel("");
   };
 
   const removeLanguage = (code: string) => {
-    set("languages", (settings.languages ?? []).filter((l) => l.code !== code));
-  };
-
-  // Quick prompt management
-  const [promptLabel, setPromptLabel] = useState("");
-  const [promptText, setPromptText] = useState("");
-
-  const addPrompt = () => {
-    if (!promptLabel.trim() || !promptText.trim()) return;
-    const prompts = settings.quick_prompts ?? [];
-    set("quick_prompts", [...prompts, { label: promptLabel.trim(), prompt: promptText.trim() }]);
-    setPromptLabel("");
-    setPromptText("");
-  };
-
-  const removePrompt = (index: number) => {
-    set("quick_prompts", (settings.quick_prompts ?? []).filter((_, i) => i !== index));
+    const nextPrompts = { ...promptsByLang };
+    delete nextPrompts[code];
+    onChange({
+      ...settings,
+      languages: languages.filter((l) => l.code !== code),
+      quick_prompts: nextPrompts,
+    });
   };
 
   return (
     <div className="space-y-5">
-      {/* General text */}
       <div className="space-y-3">
         <SectionHeader title="Text & Labels" />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Title</Label>
-            <Input value={settings.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="Ask Fayda" className="text-sm" />
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Title
+            </Label>
+            <Input
+              value={settings.title ?? ""}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="Ask Fayda"
+              className="text-sm"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subtitle</Label>
-            <Input value={settings.subtitle ?? ""} onChange={(e) => set("subtitle", e.target.value)} placeholder="Ready to help" className="text-sm" />
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Subtitle
+            </Label>
+            <Input
+              value={settings.subtitle ?? ""}
+              onChange={(e) => set("subtitle", e.target.value)}
+              placeholder="Ready to help"
+              className="text-sm"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Launcher Label</Label>
-            <Input value={settings.launcher_label ?? ""} onChange={(e) => set("launcher_label", e.target.value)} placeholder="Ask" className="text-sm" />
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Launcher Label
+            </Label>
+            <Input
+              value={settings.launcher_label ?? ""}
+              onChange={(e) => set("launcher_label", e.target.value)}
+              placeholder="Ask"
+              className="text-sm"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Input Placeholder</Label>
-            <Input value={settings.input_placeholder ?? ""} onChange={(e) => set("input_placeholder", e.target.value)} placeholder="Ask in your language..." className="text-sm" />
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Input Placeholder
+            </Label>
+            <Input
+              value={settings.input_placeholder ?? ""}
+              onChange={(e) => set("input_placeholder", e.target.value)}
+              placeholder="Ask in your language..."
+              className="text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Used for English. Amharic / Oromo use built-in translations when the visitor
+              switches language.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Features */}
       <div className="space-y-3">
         <SectionHeader title="Features" />
         <div className="space-y-3">
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Audio Upload (Mic)</p>
-              <p className="text-xs text-muted-foreground">Enable voice recording and transcription</p>
+              <p className="text-xs text-muted-foreground">
+                Enable voice recording and transcription
+              </p>
             </div>
             <Switch
               checked={settings.features?.audio_upload ?? false}
@@ -105,29 +144,38 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Quick Prompts</p>
-              <p className="text-xs text-muted-foreground">Show prompt chip shortcuts to visitors</p>
+              <p className="text-xs text-muted-foreground">
+                Show prompt chip shortcuts to visitors
+              </p>
             </div>
             <Switch
-              checked={settings.features?.quick_prompts ?? false}
+              checked={settings.features?.quick_prompts ?? true}
               onCheckedChange={(v) => setFeature("quick_prompts", v)}
             />
           </div>
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Language Selector</p>
-              <p className="text-xs text-muted-foreground">Show language dropdown for visitors</p>
+              <p className="text-xs text-muted-foreground">
+                Show language dropdown for visitors
+              </p>
             </div>
             <Switch
-              checked={settings.features?.language_selector ?? false}
+              checked={settings.features?.language_selector ?? true}
               onCheckedChange={(v) => setFeature("language_selector", v)}
             />
           </div>
         </div>
       </div>
 
-      {/* Languages */}
       <div className="space-y-3">
         <SectionHeader title="Languages" />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Use the same codes the CDN expects (e.g. <code className="font-mono">en</code>,{" "}
+          <code className="font-mono">am</code>/<code className="font-mono">amh</code>,{" "}
+          <code className="font-mono">orm</code>/<code className="font-mono">om</code>). Quick
+          prompt tabs follow this list.
+        </p>
         <div className="flex gap-2">
           <Input
             value={langCode}
@@ -146,14 +194,24 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
             Add
           </Button>
         </div>
-        {(settings.languages ?? []).length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No languages added.</p>
+        {languages.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">
+            No languages added — quick prompts will use an English tab by default.
+          </p>
         ) : (
           <div className="space-y-1.5">
-            {(settings.languages ?? []).map((lang) => (
-              <div key={lang.code} className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
-                <code className="text-xs font-mono text-muted-foreground w-8 shrink-0">{lang.code}</code>
+            {languages.map((lang) => (
+              <div
+                key={lang.code}
+                className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2"
+              >
+                <code className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
+                  {lang.code}
+                </code>
                 <span className="flex-1 text-sm">{lang.label}</span>
+                <span className="text-[10px] tabular-nums text-muted-foreground">
+                  {(promptsByLang[lang.code] ?? []).length} prompts
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -169,52 +227,13 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
         )}
       </div>
 
-      {/* Quick Prompts */}
       <div className="space-y-3">
         <SectionHeader title="Quick Prompts" />
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Input
-              value={promptLabel}
-              onChange={(e) => setPromptLabel(e.target.value)}
-              placeholder="Chip label (e.g. Services)"
-              className="text-sm flex-1"
-            />
-            <Button type="button" size="sm" onClick={addPrompt} className="shrink-0 gap-1">
-              <Plus className="h-3.5 w-3.5" />
-              Add
-            </Button>
-          </div>
-          <Input
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-            placeholder="Full prompt text sent to the bot"
-            className="text-sm"
-          />
-        </div>
-        {(settings.quick_prompts ?? []).length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No quick prompts added.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {(settings.quick_prompts ?? []).map((qp, i) => (
-              <div key={i} className="flex items-start gap-2 rounded-lg border bg-muted/20 px-3 py-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold">{qp.label}</p>
-                  <p className="text-xs text-muted-foreground truncate">{qp.prompt}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                  onClick={() => removePrompt(i)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+        <QuickPromptsEditor
+          languages={languages}
+          promptsByLang={promptsByLang}
+          onChange={(next) => set("quick_prompts", next)}
+        />
       </div>
     </div>
   );

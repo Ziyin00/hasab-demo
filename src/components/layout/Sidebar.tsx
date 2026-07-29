@@ -56,7 +56,7 @@ const NAV_GROUPS = [
     items: [
       { title: "Widgets", url: "/dashboard/widgets", icon: Bot },
       { title: "Contexts", url: "/dashboard/context", icon: FileText },
-      { title: "Installation", url: "/dashboard/installation", icon: Code2 },
+      // { title: "Installation", url: "/dashboard/installation", icon: Code2 },
     ],
   },
   {

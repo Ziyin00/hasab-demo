@@ -15,6 +15,9 @@ import type {
   ChatbotWidgetSettings,
   WidgetPosition,
 } from "@/features/chatbot-widgets/types/chatbot-widget.types";
+import {
+  resolveQuickPromptsForLang,
+} from "@/features/chatbot-widgets/utils/quickPrompts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,9 +39,11 @@ const LANG_STRINGS: Record<Lang, {
   label: string;
   placeholder: string;
   online: string;
+  subtitle: string;
   thinking: string;
   welcomeTitle: string;
   welcomeBody: string;
+  today: string;
   prompts: string[];
   /** Stored server-side as a context — never prepended to messages */
   contextInstruction: string;
@@ -48,9 +53,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "English",
     placeholder: "Type your message...",
     online: "Online",
+    subtitle: "Ready to help",
     thinking: "Thinking",
     welcomeTitle: "Welcome",
     welcomeBody: "Pick a question above, type, or tap the mic to speak.",
+    today: "Today",
     prompts: ["What can you help me with?", "Tell me about your features", "How do I get started?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in English. Do not use any other language.",
     sttLang: "eng",
@@ -59,9 +66,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "አማርኛ",
     placeholder: "መልዕክትዎን ይፃፉ...",
     online: "ኦንላይን",
+    subtitle: "ለመርዳት ዝግጁ",
     thinking: "እያሰበ ነው",
     welcomeTitle: "እንኳን ወደ ቻቱ በደህና መጡ",
     welcomeBody: "ጥያቄ ይምረጡ፣ ይፃፉ ወይም ሚክሮፎኑን ይጫኑ።",
+    today: "ዛሬ",
     prompts: ["ምን ሊረዱኝ ይችላሉ?", "ስለ ፕሮዳክቱ ይናገሩ", "እንዴት እጀምር?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in Amharic (አማርኛ). Do not use English or any other language.",
     sttLang: "amh",
@@ -70,9 +79,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "Afaan Oromoo",
     placeholder: "Ergaa kee barreessi...",
     online: "Online",
+    subtitle: "Gargaaruuf qophaa'eera",
     thinking: "Yaadaa jira",
     welcomeTitle: "Baga nagaan dhufte",
     welcomeBody: "Gaaffii filadhu, barreessi yookaan miikrofoona tuqi.",
+    today: "Har'a",
     prompts: ["Maal na gargaaruu dandeessa?", "Waa'ee tajaajila dubbadhu", "Akkami jalqabuu?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in Afaan Oromoo. Do not use English, Amharic, or any other language.",
     sttLang: "orm",
@@ -391,7 +402,10 @@ export function ChatWidget({
 
   const showMic = settings?.features?.audio_upload === true;
   const showPrompts = settings ? settings.features?.quick_prompts !== false : true;
-  const showLangSelector = settings ? settings.features?.language_selector !== false : true;
+  const showLangSelector = settings
+    ? settings.features?.language_selector !== false &&
+      settings.show_language_selector !== false
+    : true;
 
   // isMounted prevents hydration mismatch: useAuthStore reads localStorage which
   // is unavailable on the server, so SSR and client initial render both use the
@@ -422,6 +436,18 @@ export function ChatWidget({
     if (stored) setLang(stored);
   }, []);
   const ui = LANG_STRINGS[toLangKey(lang)];
+  const langKey = toLangKey(lang);
+  // Built-in UI strings for am/orm; English can use admin-configured overrides
+  const displayWelcome =
+    langKey === "en" ? (welcomeMessage ?? ui.welcomeBody) : ui.welcomeBody;
+  const displayPlaceholder =
+    langKey === "en"
+      ? settings?.input_placeholder || ui.placeholder
+      : ui.placeholder;
+  const displaySubtitle =
+    langKey === "en"
+      ? settings?.subtitle || ui.subtitle
+      : ui.subtitle;
   const languageOptions = settings?.languages?.length
     ? settings.languages
     : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
@@ -741,8 +767,9 @@ export function ChatWidget({
     </div>
   );
 
-  const quickPromptItems = settings?.quick_prompts?.length
-    ? settings.quick_prompts.map((p) => ({ label: p.label, text: p.prompt }))
+  const resolvedPrompts = resolveQuickPromptsForLang(settings?.quick_prompts, lang);
+  const quickPromptItems = resolvedPrompts
+    ? resolvedPrompts.map((p) => ({ label: p.label, text: p.prompt }))
     : ui.prompts.map((q) => ({ label: q, text: q }));
 
   return (
@@ -791,7 +818,7 @@ export function ChatWidget({
                   className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: "#22c55e", boxShadow: "0 0 0 2px rgba(34,197,94,0.3)" }}
                 />
-                {settings?.subtitle || ui.online}
+                {displaySubtitle}
               </p>
             </div>
           </div>
@@ -863,13 +890,13 @@ export function ChatWidget({
                 className="mt-1 text-[12px] text-center"
                 style={{ color: mutedColor }}
               >
-                {settings?.subtitle || ui.online}
+                {displaySubtitle}
               </p>
 
               {/* "Today" date separator */}
               <div className="flex items-center w-full gap-3 mt-6 mb-4">
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
-                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <span className="text-[11px]" style={{ color: mutedColor }}>{ui.today}</span>
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
               </div>
 
@@ -885,12 +912,12 @@ export function ChatWidget({
                     borderBottomLeftRadius: "4px",
                   }}
                 >
-                  {welcomeMessage ?? ui.welcomeBody}
+                  {displayWelcome}
                 </div>
               </div>
 
               {/* Quick prompt chips — parallel with welcome message; last chip has bot avatar */}
-              {showPrompts && (settings ? settings.quick_prompts?.length : true) && (
+              {showPrompts && quickPromptItems.length > 0 && (
                 <div className="w-full space-y-2 mt-1">
                   {quickPromptItems.map((q, idx, arr) => (
                     <div key={q.label} className="flex items-center gap-2">
@@ -920,7 +947,7 @@ export function ChatWidget({
               {/* "Today" separator */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
-                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <span className="text-[11px]" style={{ color: mutedColor }}>{ui.today}</span>
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
               </div>
 
@@ -1084,7 +1111,7 @@ export function ChatWidget({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(input); } }}
-                  placeholder={settings?.input_placeholder || ui.placeholder}
+                  placeholder={displayPlaceholder}
                   disabled={loading}
                   className="flex-1 bg-transparent text-[13px] focus:outline-none"
                   style={{ color: theme?.text_color ?? "#111" }}

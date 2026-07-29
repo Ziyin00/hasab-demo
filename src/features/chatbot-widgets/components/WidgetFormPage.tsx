@@ -32,6 +32,7 @@ import {
   useCreateChatbotWidget,
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
+import { normalizeQuickPrompts } from "../utils/quickPrompts";
 
 const POSITIONS: { label: string; value: WidgetPosition }[] = [
   { label: "Bottom Right", value: "bottom-right" },
@@ -74,8 +75,12 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
   launcher_label: "Ask",
   input_placeholder: "Ask in your language...",
   show_language_selector: true,
-  languages: [{ code: "en", label: "English" }],
-  quick_prompts: [],
+  languages: [
+    { code: "en", label: "English" },
+    { code: "am", label: "Amharic" },
+    { code: "orm", label: "Oromo" },
+  ],
+  quick_prompts: {},
   features: { audio_upload: false, quick_prompts: true, language_selector: true },
 };
 
@@ -116,7 +121,17 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
     if (widget) {
       const { id, widget_id, snippet, ...rest } = widget;
       void id; void widget_id; void snippet;
-      setForm(rest as CreateChatbotWidgetPayload);
+      const payload = rest as CreateChatbotWidgetPayload;
+      setForm({
+        ...payload,
+        settings: {
+          ...payload.settings,
+          quick_prompts: normalizeQuickPrompts(
+            payload.settings?.quick_prompts,
+            payload.settings?.languages
+          ),
+        },
+      });
       setContextIdsRaw(widget.chat_context_ids.join(", "));
       setRagIdsRaw(widget.rag_store_ids.join(", "));
     }
@@ -135,6 +150,13 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
       ...form,
       chat_context_ids: parseIds(contextIdsRaw),
       rag_store_ids: parseIds(ragIdsRaw),
+      settings: {
+        ...form.settings,
+        quick_prompts: normalizeQuickPrompts(
+          form.settings?.quick_prompts,
+          form.settings?.languages
+        ),
+      },
     };
     if (!payload.name.trim()) return;
 

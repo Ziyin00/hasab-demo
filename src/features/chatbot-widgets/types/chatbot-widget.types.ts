@@ -63,6 +63,14 @@ export interface QuickPrompt {
   prompt: string;
 }
 
+/** Legacy: same chips for every language */
+export type QuickPromptsLegacy = QuickPrompt[];
+
+/** New: chips keyed by language code (e.g. en / am / orm) */
+export type QuickPromptsMultilingual = Record<string, QuickPrompt[]>;
+
+export type QuickPromptsConfig = QuickPromptsLegacy | QuickPromptsMultilingual;
+
 export interface WidgetFeatures {
   audio_upload?: boolean;
   quick_prompts?: boolean;
@@ -76,7 +84,8 @@ export interface ChatbotWidgetSettings {
   input_placeholder?: string;
   show_language_selector?: boolean;
   languages?: LanguageOption[];
-  quick_prompts?: QuickPrompt[];
+  /** Array = legacy (all langs). Object = per-language chips. */
+  quick_prompts?: QuickPromptsConfig;
   features?: WidgetFeatures;
 }
 
