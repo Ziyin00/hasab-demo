@@ -178,8 +178,8 @@ Order, top → bottom:
 
 1. Centered avatar **72px** (url → initials on primary gradient → bot icon)
 2. Title: `settings.title`, `~20px` bold, `text_color`
-3. Subtitle: `settings.subtitle` or “Ready to help”, `12px`, `#999`
-4. Horizontal rule with centered **Today**
+3. Subtitle: localized chrome (see `CDN_UI_LOCALIZATION.md`) — English may use `settings.subtitle` or “Ready to help”; Amharic / Oromo use built-in translations. `12px`, `#999`
+4. Horizontal rule with centered **Today** (localize label: en `Today` / am `ዛሬ` / om `Har'a`)
 5. Welcome bubble (bot colors + border), left-aligned with **26px** spacer (no avatar on this row)
 6. Quick prompts (if enabled and non-empty)
 

@@ -23,6 +23,8 @@ This document is the authoritative specification for everything the backend must
 11. [Data Models (Full Schemas)](#11-data-models-full-schemas)
 12. [CDN Script Layout Bugs — Preview vs Live Diff](#12-cdn-script-layout-bugs--preview-vs-live-diff-2026-07-27)
 
+**Also see:** [`CDN_UI_LOCALIZATION.md`](./CDN_UI_LOCALIZATION.md) — localize “Ready to help” and other chrome strings when the visitor switches language (must match `ChatWidget.tsx`).
+
 ---
 
 ## 1. System Overview

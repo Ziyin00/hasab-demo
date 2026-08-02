@@ -19,6 +19,8 @@ export function truncateUrl(url: string, max = 48): string {
 export function formatSourceLabel(source: string): string {
   const labels: Record<string, string> = {
     widget: "Widget",
+    web: "Web",
+    mobile: "Mobile",
     dashboard: "Dashboard",
     unknown: "Unknown",
   };
