@@ -22,6 +22,7 @@ export function formatSourceLabel(source: string): string {
     web: "Web",
     mobile: "Mobile",
     dashboard: "Dashboard",
+    telegram: "Telegram",
     unknown: "Unknown",
   };
   return labels[source] ?? source;

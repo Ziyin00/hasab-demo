@@ -18,6 +18,7 @@ import {
   Bot,
   LayoutDashboard,
   Inbox,
+  Send,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -73,6 +74,8 @@ const SOURCE_STYLE: Record<string, string> = {
   mobile: "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-400",
   dashboard:
     "border-indigo-500/25 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+  telegram:
+    "border-sky-600/25 bg-sky-600/10 text-sky-800 dark:text-sky-300",
 };
 
 const SOURCE_ICON: Record<string, typeof Bot> = {
@@ -80,6 +83,7 @@ const SOURCE_ICON: Record<string, typeof Bot> = {
   web: Globe,
   mobile: Smartphone,
   dashboard: LayoutDashboard,
+  telegram: Send,
 };
 
 const DEVICE_ICON: Record<string, typeof Monitor> = {
@@ -159,7 +163,9 @@ function OriginCell({ conversation }: { conversation: Conversation }) {
       ? "Dashboard"
       : conversation.source === "mobile"
         ? "Mobile app"
-        : host ?? "Platform";
+        : conversation.source === "telegram"
+          ? "Telegram"
+          : host ?? "Platform";
 
   return (
     <div className="min-w-0">
@@ -276,6 +282,7 @@ export function ConversationInbox({ range }: ConversationInboxProps) {
               <SelectContent>
                 <SelectItem value="all">All sources</SelectItem>
                 <SelectItem value="widget">Widget</SelectItem>
+                <SelectItem value="telegram">Telegram</SelectItem>
                 <SelectItem value="web">Web</SelectItem>
                 <SelectItem value="mobile">Mobile</SelectItem>
                 <SelectItem value="dashboard">Dashboard</SelectItem>

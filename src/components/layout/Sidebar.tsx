@@ -23,11 +23,11 @@ import {
   Moon,
   TrendingUp,
   KeyRound,
-  Code2,
   ChevronsUpDown,
   FileText,
   Bot,
   MessageSquare,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -55,6 +55,7 @@ const NAV_GROUPS = [
     label: "WIDGET",
     items: [
       { title: "Widgets", url: "/dashboard/widgets", icon: Bot },
+      { title: "Telegram Bots", url: "/dashboard/telegram-bots", icon: Send },
       { title: "Contexts", url: "/dashboard/context", icon: FileText },
       // { title: "Installation", url: "/dashboard/installation", icon: Code2 },
     ],
