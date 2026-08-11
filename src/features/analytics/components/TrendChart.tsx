@@ -7,12 +7,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 import { LineChart } from "lucide-react";
 import type { TrendPoint } from "../types/analytics.types";
 import { toPercent } from "../utils/format";
 import { ANALYTICS_COLORS } from "../constants";
+import { ChartContainer } from "./ChartContainer";
 import { EmptyState } from "./EmptyState";
 
 interface TooltipEntry {
@@ -98,58 +98,56 @@ export function TrendChart({ data }: TrendChartProps) {
         ))}
       </div>
 
-      <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
-            <defs>
-              {SERIES.map((s) => (
-                <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={s.color} stopOpacity={0.22} />
-                  <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
-                </linearGradient>
-              ))}
-            </defs>
-
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="currentColor"
-              className="text-border/50"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              tickMargin={10}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              width={36}
-            />
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{ stroke: "var(--border)", strokeWidth: 1, strokeDasharray: "4 2" }}
-            />
-
+      <ChartContainer className="min-h-0 flex-1" height={220}>
+        <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
+          <defs>
             {SERIES.map((s) => (
-              <Area
-                key={s.key}
-                type="monotone"
-                dataKey={s.key}
-                name={s.label}
-                stroke={s.color}
-                strokeWidth={2}
-                fill={`url(#grad-${s.key})`}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
+              <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={s.color} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
+              </linearGradient>
             ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+          </defs>
+
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="currentColor"
+            className="text-border/50"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            axisLine={false}
+            tickLine={false}
+            tickMargin={10}
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            axisLine={false}
+            tickLine={false}
+            width={36}
+          />
+          <Tooltip
+            content={<CustomTooltip />}
+            cursor={{ stroke: "var(--border)", strokeWidth: 1, strokeDasharray: "4 2" }}
+          />
+
+          {SERIES.map((s) => (
+            <Area
+              key={s.key}
+              type="monotone"
+              dataKey={s.key}
+              name={s.label}
+              stroke={s.color}
+              strokeWidth={2}
+              fill={`url(#grad-${s.key})`}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0 }}
+            />
+          ))}
+        </AreaChart>
+      </ChartContainer>
     </div>
   );
 }

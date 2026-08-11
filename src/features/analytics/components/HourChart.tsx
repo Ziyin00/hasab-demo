@@ -7,13 +7,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts";
 import { Clock } from "lucide-react";
 import type { HourBucket } from "../types/analytics.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ANALYTICS_COLORS } from "../constants";
+import { ChartContainer } from "./ChartContainer";
 import { EmptyState } from "./EmptyState";
 
 interface HourChartProps {
@@ -33,7 +33,7 @@ export function HourChart({ data, loading }: HourChartProps) {
   const peakCount = Math.max(...data.map((d) => d.conversations_count));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer height={176}>
       <BarChart data={data} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
         <defs>
           <linearGradient id="hourBarPeak" x1="0" y1="0" x2="0" y2="1">
@@ -89,6 +89,6 @@ export function HourChart({ data, loading }: HourChartProps) {
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
