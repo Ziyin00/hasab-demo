@@ -120,14 +120,17 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
   const { theme, setTheme } = useTheme();
 
-  const visibleGroups = useMemo(
-    () =>
-      NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => can(item.access ?? "all")),
-      })).filter((group) => group.items.length > 0),
-    [can]
-  );
+  const visibleGroups = useMemo(() => {
+    // Hydration safety: on the server `user` is null (no localStorage),
+    // so role-based filtering would change the rendered DOM after mount.
+    // Render the full nav until the component mounts on the client.
+    if (!isMounted) return NAV_GROUPS;
+
+    return NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => can(item.access ?? "all")),
+    })).filter((group) => group.items.length > 0);
+  }, [can, isMounted]);
 
   const displayName = isMounted ? user?.name || "Hasab User" : "Hasab User";
   const displayEmail = isMounted ? user?.email || "user@hasab.ai" : "user@hasab.ai";

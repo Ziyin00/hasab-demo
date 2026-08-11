@@ -374,7 +374,11 @@ export function ChatWidget({
   botNameOverride,
   defaultLanguage,
 }: ChatWidgetProps = {}) {
-  const { data: config } = useWidgetConfig();
+  // Skip legacy `/api/widget` fetch when we already have real widget theme/settings
+  // (floating bubble + widget preview). This avoids 404 spam from legacy endpoint.
+  // Legacy single-widget config endpoint is noisy/optional; when we are
+  // rendering a real widget preview (theme/settings provided), we don't need it.
+  const { data: config } = useWidgetConfig({ enabled: false });
   const { user } = useAuthStore();
   // config (legacy useWidgetConfig) is this admin session's own single-widget
   // settings — never part of a real widget's data-theme, so it must not leak

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Copy, Check, Loader2, Save, ShieldCheck, KeyRound, Globe, Bot } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { WidgetPreview } from "./WidgetPreview";
-import { useWidgetConfig, useWidgetKeys, useUpdateWidgetConfig } from "../hooks/useWidget";
 import { useLocalWidgetConfig } from "../hooks/useLocalWidgetConfig";
 import type { WidgetConfig, WidgetPosition } from "../types/widget.types";
 
@@ -40,20 +39,15 @@ const ATTRIBUTES = [
 ];
 
 export function InstallationPage() {
-  const { data: serverConfig, isLoading: serverLoading } = useWidgetConfig();
-  const { data: keys, isLoading: keysLoading } = useWidgetKeys();
-  const { mutate: save, isPending: saving } = useUpdateWidgetConfig();
-  const { config, setField, seedFromServer, ready, seeded } = useLocalWidgetConfig();
+  const { config, setField, ready } = useLocalWidgetConfig();
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (serverConfig) seedFromServer(serverConfig);
-  }, [serverConfig]);
+  // Legacy `/api/widget` endpoints disabled; keep everything local.
 
   const set = <K extends keyof WidgetConfig>(key: K, val: WidgetConfig[K]) =>
     setField(key, val);
 
-  const publicKey = keys?.public_key ?? "YOUR_PUBLIC_KEY";
+  const publicKey = config.public_key ?? "YOUR_PUBLIC_KEY";
 
   const snippet = `<script
   src="https://cdn.hasab.ai/widget.js"
@@ -75,10 +69,14 @@ export function InstallationPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = () => save(config);
+  const handleSave = () => {
+    toast.info(
+      "Server save is disabled for now (legacy /api/widget endpoints are not available). Changes are saved locally."
+    );
+  };
 
-  const settingsLoading = !ready || (serverLoading && !seeded);
-  const isLoading = settingsLoading || keysLoading;
+  const settingsLoading = !ready;
+  const isLoading = settingsLoading;
 
   return (
     <div className="space-y-8">
@@ -261,11 +259,11 @@ export function InstallationPage() {
 
           <Button
             className="gap-2"
-            disabled={settingsLoading || saving}
+            disabled={settingsLoading}
             onClick={handleSave}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save Changes"}
+            <Save className="h-4 w-4" />
+            Save Changes (local)
           </Button>
         </div>
 

@@ -8,11 +8,12 @@ import {
   DEFAULT_WIDGET_CONFIG,
 } from "./useLocalWidgetConfig";
 
-export function useWidgetConfig() {
+export function useWidgetConfig(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["widget", "config"],
     queryFn: widgetApi.getConfig,
     staleTime: 5 * 60 * 1000,
+    enabled: options?.enabled ?? true,
   });
 }
 
