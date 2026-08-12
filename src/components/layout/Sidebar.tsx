@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +28,7 @@ import {
   Bot,
   MessageSquare,
   Send,
+  History,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: MessageSquare,
         access: "admin",
       },
+      {
+        title: "Activity",
+        url: "/dashboard/activity",
+        icon: History,
+        access: "all",
+      },
     ],
   },
   {
@@ -118,7 +125,8 @@ export function AppSidebar() {
   }, []);
 
   const isCollapsed = state === "collapsed";
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isDark = (resolvedTheme ?? theme) === "dark";
 
   const visibleGroups = useMemo(() => {
     // Hydration safety: on the server `user` is null (no localStorage),
@@ -279,10 +287,10 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
                 >
-                  {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {isDark ? "Light Mode" : "Dark Mode"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
