@@ -37,7 +37,9 @@ export function ClassificationCoverageBar({ data, loading }: ClassificationCover
         }}
       >
         <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full bg-card">
-          <span className="text-sm font-bold tabular-nums leading-none">{data.display}</span>
+          <span className="text-sm font-bold tabular-nums leading-none">
+            {(data.percent * 100).toFixed(1)}%
+          </span>
         </div>
       </div>
       <div>
