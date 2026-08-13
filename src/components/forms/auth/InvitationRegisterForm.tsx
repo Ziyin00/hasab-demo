@@ -65,7 +65,7 @@ export function InvitationRegisterForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form method="post" className="space-y-4" onSubmit={handleSubmit}>
       <h4 className="font-semibold text-foreground">Create account to accept invitation</h4>
 
       {error && (

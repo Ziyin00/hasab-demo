@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/store/auth.store";
 import { apiClient } from "@/lib/api-client";
+import { scrubSensitiveQueryParams } from "@/lib/scrubSensitiveQueryParams";
 import { LoginResponse } from "@/types/api.types";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +27,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, loadingState, addToast } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    scrubSensitiveQueryParams();
+  }, []);
 
   const {
     register,
@@ -58,14 +63,19 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6">
-      {/* Heading */}
       <div className="space-y-1 text-center">
         <h1 className="text-3xl font-bold text-foreground">Welcome Back</h1>
         <p className="text-muted-foreground text-sm">Sign in to Hasab Meetings</p>
       </div>
 
-      {/* Email / password form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* method=post: if JS fails, credentials stay out of the URL / browser history */}
+      <form
+        method="post"
+        action="/login"
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4"
+        autoComplete="on"
+      >
         {error && (
           <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
             {error}
@@ -77,6 +87,7 @@ export default function LoginPage() {
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             placeholder="name@example.com"
             disabled={loadingState}
             {...register("email")}
@@ -99,6 +110,7 @@ export default function LoginPage() {
           <Input
             id="password"
             type="password"
+            autoComplete="current-password"
             disabled={loadingState}
             {...register("password")}
           />
@@ -119,7 +131,6 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
         <span className="text-muted-foreground text-xs">or</span>
@@ -135,7 +146,6 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      {/* Footer */}
       <p className="text-center text-xs text-muted-foreground leading-relaxed">
         By proceeding, you confirm that you agree with our{" "}
         <Link href="/terms" className="underline hover:text-foreground transition-colors">

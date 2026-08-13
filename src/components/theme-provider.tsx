@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useServerInsertedHTML } from "next/navigation";
 
 type Theme = "dark" | "light" | "system";
 
@@ -59,7 +58,11 @@ function applyThemeClass(
 ) {
   const root = document.documentElement;
   const resolved =
-    theme === "system" && opts.enableSystem ? getSystemTheme() : theme === "system" ? "light" : theme;
+    theme === "system" && opts.enableSystem
+      ? getSystemTheme()
+      : theme === "system"
+        ? "light"
+        : theme;
   const restore = opts.disableTransitionOnChange ? disableTransitionsTemporarily() : null;
 
   root.classList.remove("light", "dark");
@@ -68,11 +71,7 @@ function applyThemeClass(
   restore?.();
 }
 
-/**
- * Drop-in replacement for next-themes ThemeProvider.
- * Injects the FOUC-prevention script via `useServerInsertedHTML` so React 19
- * does not warn about `<script>` tags rendered inside Client Components.
- */
+/** Blocking FOUC script lives in `theme-script.ts` and is rendered once from root layout. */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -83,19 +82,6 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [systemTheme, setSystemTheme] = useState<"dark" | "light">("light");
   const [mounted, setMounted] = useState(false);
-
-  useServerInsertedHTML(() => {
-    const script = `(function(k,d,e){try{var r=document.documentElement,t=localStorage.getItem(k)||d,s=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light",v=t==="system"&&e?s:t==="system"?"light":t;r.classList.remove("light","dark");r.classList.add(v);r.style.colorScheme=v}catch(n){}})(${JSON.stringify(
-      storageKey
-    )},${JSON.stringify(defaultTheme)},${enableSystem ? "true" : "false"})`;
-
-    return (
-      <script
-        key="hasab-theme-init"
-        dangerouslySetInnerHTML={{ __html: script }}
-      />
-    );
-  });
 
   useEffect(() => {
     const stored = (localStorage.getItem(storageKey) as Theme | null) ?? defaultTheme;

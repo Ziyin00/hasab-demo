@@ -159,7 +159,7 @@ export default function EnterpriseRegisterPage() {
       {/* Step 1 */}
       {step === 1 && (
         <Form {...userForm}>
-          <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-5">
+          <form method="post" onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-5">
             <UserInfoStep />
             <Button type="submit" className="w-full">
               Next <ArrowRight className="ml-1 h-4 w-4" />
@@ -171,7 +171,7 @@ export default function EnterpriseRegisterPage() {
       {/* Step 2 */}
       {step === 2 && (
         <Form {...orgForm}>
-          <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-5">
+          <form method="post" onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-5">
             <OrgInfoStep />
             <Button type="submit" className="w-full">
               Next <ArrowRight className="ml-1 h-4 w-4" />
@@ -183,7 +183,7 @@ export default function EnterpriseRegisterPage() {
       {/* Step 3 */}
       {step === 3 && (
         <Form {...addressForm}>
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5">
+          <form method="post" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5">
             <AddressStep />
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (

@@ -43,7 +43,7 @@ export function InvitationLoginForm({ email, invitationToken, onSuccess }: Invit
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form method="post" className="space-y-4" onSubmit={handleSubmit}>
       <h4 className="font-semibold text-foreground">Login to accept invitation</h4>
 
       {error && (
