@@ -219,9 +219,9 @@ export function AnalyticsPage() {
             icon={BarChart3}
             className="lg:col-span-3 h-full"
           >
-            <div className="h-64">
+            <div className="min-h-[16rem]">
               {isLoading ? (
-                <div className="h-full rounded-xl bg-muted/40 animate-pulse" />
+                <div className="h-64 rounded-xl bg-muted/40 animate-pulse" />
               ) : (
                 <TrendChart data={data?.trend ?? []} />
               )}
@@ -301,7 +301,7 @@ export function AnalyticsPage() {
             description="Conversations by hour of day. Peak hour highlighted."
             icon={Clock}
           >
-            <div className="h-44">
+            <div className="min-h-[11rem] min-w-0">
               <HourChart data={data?.by_hour ?? []} loading={isLoading} />
             </div>
           </AnalyticsPanel>

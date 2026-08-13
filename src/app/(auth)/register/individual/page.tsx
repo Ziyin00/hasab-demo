@@ -100,7 +100,7 @@ export default function IndividualRegisterPage() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <IndividualForm />
 
           <Button className="w-full" type="submit" disabled={isSubmitting}>

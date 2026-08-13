@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import {
   Sidebar,
   SidebarContent,
@@ -23,16 +23,20 @@ import {
   Moon,
   TrendingUp,
   KeyRound,
-  Code2,
   ChevronsUpDown,
   FileText,
   Bot,
   MessageSquare,
+  Send,
+  History,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuthStore } from "@/store/auth.store";
+import { useAccess } from "@/hooks/useAccess";
+import type { AccessLevel } from "@/lib/userAccess";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,26 +47,67 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const NAV_GROUPS = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  /** Who can see this item — mirrors hasab-dashboard-v2 */
+  access?: AccessLevel;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "MONITORING",
     items: [
-      { title: "Analytics", url: "/dashboard/analytics", icon: TrendingUp, exact: true },
-      { title: "Conversations", url: "/dashboard/analytics/conversations", icon: MessageSquare },
+      {
+        title: "Analytics",
+        url: "/dashboard/analytics",
+        icon: TrendingUp,
+        exact: true,
+        access: "admin",
+      },
+      {
+        title: "Conversations",
+        url: "/dashboard/analytics/conversations",
+        icon: MessageSquare,
+        access: "admin",
+      },
+      {
+        title: "Activity",
+        url: "/dashboard/activity",
+        icon: History,
+        access: "all",
+      },
     ],
   },
   {
     label: "WIDGET",
     items: [
-      { title: "Widgets", url: "/dashboard/widgets", icon: Bot },
-      { title: "Contexts", url: "/dashboard/context", icon: FileText },
-      // { title: "Installation", url: "/dashboard/installation", icon: Code2 },
+      { title: "Widgets", url: "/dashboard/widgets", icon: Bot, access: "org" },
+      {
+        title: "Telegram Bots",
+        url: "/dashboard/telegram-bots",
+        icon: Send,
+        access: "org",
+      },
+      {
+        title: "Contexts",
+        url: "/dashboard/context",
+        icon: FileText,
+        access: "admin",
+      },
     ],
   },
   {
     label: "DEVELOPER",
     items: [
-      { title: "API Key", url: "/dashboard/api-keys", icon: KeyRound },
+      { title: "API Key", url: "/dashboard/api-keys", icon: KeyRound, access: "admin" },
     ],
   },
 ];
@@ -72,6 +117,7 @@ export function AppSidebar() {
   const router = useRouter();
   const { state, isMobile } = useSidebar();
   const { user, logout } = useAuthStore();
+  const { can, roleLabel } = useAccess();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -79,18 +125,31 @@ export function AppSidebar() {
   }, []);
 
   const isCollapsed = state === "collapsed";
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isDark = (resolvedTheme ?? theme) === "dark";
+
+  const visibleGroups = useMemo(() => {
+    // Hydration safety: on the server `user` is null (no localStorage),
+    // so role-based filtering would change the rendered DOM after mount.
+    // Render the full nav until the component mounts on the client.
+    if (!isMounted) return NAV_GROUPS;
+
+    return NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => can(item.access ?? "all")),
+    })).filter((group) => group.items.length > 0);
+  }, [can, isMounted]);
 
   const displayName = isMounted ? user?.name || "Hasab User" : "Hasab User";
   const displayEmail = isMounted ? user?.email || "user@hasab.ai" : "user@hasab.ai";
   const displayInitials =
     isMounted && user?.name ? user.name.substring(0, 2).toUpperCase() : "HA";
   const orgName = isMounted ? user?.organization?.name ?? displayName : displayName;
+  const displayRole = isMounted ? roleLabel : "";
 
   return (
     <Sidebar collapsible="icon">
-      {/* Header */}
-      <SidebarHeader className="p-4 border-b relative group-data-[collapsible=icon]:p-2">
+      <SidebarHeader className="relative border-b p-4 group-data-[collapsible=icon]:p-2">
         {!isCollapsed || isMobile ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -99,11 +158,11 @@ export function AppSidebar() {
                 alt="Hasab AI"
                 width={28}
                 height={28}
-                className="rounded-md size-7"
+                className="size-7 rounded-md"
               />
               <div>
-                <p className="font-bold text-sm leading-tight">Hasab AI</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                <p className="text-sm leading-tight font-bold">Hasab AI</p>
+                <p className="text-[10px] tracking-widest text-muted-foreground uppercase">
                   Chat Dashboard
                 </p>
               </div>
@@ -117,16 +176,15 @@ export function AppSidebar() {
               alt="Hasab AI"
               width={28}
               height={28}
-              className="rounded-md size-7"
+              className="size-7 rounded-md"
             />
             <SidebarTrigger />
           </div>
         )}
       </SidebarHeader>
 
-      {/* Nav groups */}
       <SidebarContent>
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label}>
             {(!isCollapsed || isMobile) && (
               <SidebarGroupLabel className="px-4 py-2 text-[10px] tracking-widest text-muted-foreground">
@@ -148,14 +206,14 @@ export function AppSidebar() {
                         className={cn(
                           "transition-all duration-150",
                           isActive
-                            ? "bg-primary/10 text-primary font-medium"
+                            ? "bg-primary/10 font-medium text-primary"
                             : "hover:bg-accent"
                         )}
                       >
                         <Link href={item.url} className="flex items-center gap-3">
                           <item.icon
                             className={cn(
-                              "w-4 h-4 shrink-0",
+                              "h-4 w-4 shrink-0",
                               isActive ? "text-primary" : "text-muted-foreground"
                             )}
                           />
@@ -173,8 +231,7 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      {/* Footer */}
-      <SidebarFooter className="p-4 border-t">
+      <SidebarFooter className="border-t p-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -192,9 +249,9 @@ export function AppSidebar() {
                   {(!isCollapsed || isMobile) && (
                     <>
                       <div className="grid flex-1 text-left text-xs leading-tight">
-                        <span className="truncate font-semibold text-sm">{orgName}</span>
+                        <span className="truncate text-sm font-semibold">{orgName}</span>
                         <span className="truncate text-[11px] text-muted-foreground">
-                          Hasab AI Chat v1.0
+                          {displayRole || "Hasab AI Chat"}
                         </span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
@@ -216,27 +273,34 @@ export function AppSidebar() {
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">{displayName}</span>
-                      <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {displayEmail}
+                      </span>
+                      {displayRole && (
+                        <span className="mt-0.5 truncate text-[10px] font-medium text-primary">
+                          {displayRole}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
                 >
-                  {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {isDark ? "Light Mode" : "Dark Mode"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive cursor-pointer"
+                  className="cursor-pointer text-destructive focus:text-destructive"
                   onClick={async () => {
                     await logout();
                     router.push("/login");
                   }}
                 >
-                  <LogOut className="size-4 mr-2" />
+                  <LogOut className="mr-2 size-4" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>

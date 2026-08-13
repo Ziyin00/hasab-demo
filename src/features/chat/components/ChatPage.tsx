@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, RotateCcw, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWidgetConfig } from "@/features/widget/hooks/useWidget";
 import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { buildClientMetadata } from "@/lib/client-metadata";
@@ -68,10 +67,11 @@ function formatTime(d: Date) {
 }
 
 export function ChatPage() {
-  const { data: config } = useWidgetConfig();
-  const primaryColor = config?.primary_color ?? "#3C6278";
-  const userMsgColor = config?.user_message_color ?? "#6F0001";
-  const botName = config?.bot_name ?? "Hasab AI Chat";
+  // Dashboard chat test page — legacy `/api/widget` is optional.
+  // Use the design defaults and let the user focus on chat testing.
+  const primaryColor = "#3C6278";
+  const userMsgColor = "#6F0001";
+  const botName = "Hasab AI Chat";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
