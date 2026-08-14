@@ -2,73 +2,117 @@
 
 import { Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { TopPage } from "../types/analytics.types";
-import { truncateUrl } from "../utils/format";
-import { ANALYTICS_COLORS } from "../constants";
 import { EmptyState } from "./EmptyState";
+import { toPercent } from "../utils/format";
 
 interface TopPagesTableProps {
   data: TopPage[];
   loading?: boolean;
 }
 
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+function path(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.pathname}${u.search}` || "/";
+  } catch {
+    return url;
+  }
+}
+
 export function TopPagesTable({ data, loading }: TopPagesTableProps) {
   if (loading) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-11 rounded-lg" />
+      <div className="space-y-2 p-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
         ))}
       </div>
     );
   }
 
-  if (data.length === 0) {
-    return (
-      <EmptyState
-        icon={Globe}
-        message="No widget page URLs recorded in this range."
-      />
-    );
+  const pages = data.filter((d) => d.conversations_count > 0);
+  if (!pages.length) {
+    return <EmptyState icon={Globe} message="No widget page URLs recorded in this range." />;
   }
 
-  const max = Math.max(...data.map((d) => d.conversations_count), 1);
+  const total = pages.reduce((sum, d) => sum + d.conversations_count, 0);
 
   return (
-    <div className="space-y-1.5">
-      {data.map((page, index) => {
-        const pct = (page.conversations_count / max) * 100;
-        return (
-          <div
-            key={page.page_url}
-            className="group relative overflow-hidden rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2 transition-colors hover:border-border/70 hover:bg-muted/20"
-          >
-            <div
-              className="pointer-events-none absolute inset-y-0 left-0 opacity-[0.06] transition-opacity group-hover:opacity-[0.1]"
-              style={{
-                width: `${pct}%`,
-                background: ANALYTICS_COLORS.primary,
-              }}
-            />
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary tabular-nums">
-                  {index + 1}
-                </span>
-                <span
-                  title={page.page_url}
-                  className="truncate font-mono text-[11px] text-foreground/90"
-                >
-                  {truncateUrl(page.page_url, 48)}
-                </span>
-              </div>
-              <span className="shrink-0 text-sm font-semibold tabular-nums">
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="h-9 w-10 bg-muted/40 px-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            #
+          </TableHead>
+          <TableHead className="h-9 bg-muted/40 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Page
+          </TableHead>
+          <TableHead className="h-9 hidden bg-muted/40 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:table-cell">
+            Host
+          </TableHead>
+          <TableHead className="h-9 bg-muted/40 px-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Conversations
+          </TableHead>
+          <TableHead className="h-9 bg-muted/40 px-3 pr-4 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Share
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pages.map((page, index) => {
+          const share = total > 0 ? page.conversations_count / total : 0;
+          return (
+            <TableRow key={page.page_url}>
+              <TableCell className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
+                {index + 1}
+              </TableCell>
+              <TableCell className="max-w-xs px-3 py-3">
+                <p className="truncate text-sm font-medium" title={page.page_url}>
+                  {path(page.page_url)}
+                </p>
+              </TableCell>
+              <TableCell className="hidden max-w-40 px-3 py-3 md:table-cell">
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {hostname(page.page_url)}
+                </p>
+              </TableCell>
+              <TableCell className="px-3 py-3 text-right text-sm tabular-nums">
                 {page.conversations_count.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+              </TableCell>
+              <TableCell className="px-3 pr-4 py-3 text-right">
+                <div className="ml-auto flex max-w-28 flex-col items-end gap-1">
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {toPercent(share, 0)}
+                  </span>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.max(share * 100, 4)}%` }}
+                    />
+                  </div>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

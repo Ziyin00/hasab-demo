@@ -18,7 +18,8 @@ export function CategoryBreakdown({ data, loading }: CategoryBreakdownProps) {
         label: d.name,
         conversations_count: d.conversations_count,
         share: d.share,
-      })),
+      }))
+      .filter((d) => d.conversations_count > 0),
     [data]
   );
 

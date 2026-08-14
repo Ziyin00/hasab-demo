@@ -99,6 +99,6 @@ export function normalizeAnalyticsData(raw: Partial<AnalyticsData>): AnalyticsDa
     response_time: normalizeResponseTime(raw.response_time),
     classification_coverage: normalizeClassificationCoverage(raw.classification_coverage),
     widget_status: raw.widget_status ?? null,
-    last_updated: raw.last_updated ?? new Date().toISOString(),
+    last_updated: raw.last_updated ?? "",
   };
 }

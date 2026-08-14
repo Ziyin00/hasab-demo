@@ -12,6 +12,7 @@ interface AnalyticsPanelProps {
   contentClassName?: string;
   /** Highlights the panel with a subtle brand tint */
   accent?: boolean;
+  action?: React.ReactNode;
 }
 
 export function AnalyticsPanel({
@@ -22,6 +23,7 @@ export function AnalyticsPanel({
   className,
   contentClassName,
   accent = false,
+  action,
 }: AnalyticsPanelProps) {
   return (
     <div
@@ -45,8 +47,11 @@ export function AnalyticsPanel({
               <Icon className="h-3.5 w-3.5" />
             </div>
           )}
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+              {action}
+            </div>
             {description && (
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 {description}
