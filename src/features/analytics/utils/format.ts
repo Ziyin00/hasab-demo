@@ -55,6 +55,19 @@ export function formatMs(ms: number | null | undefined): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+export function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export interface ShareBreakdownItem {
   key: string;
   label: string;
@@ -67,10 +80,12 @@ export function toShareItems<T extends { conversations_count: number; share: num
   getKey: (row: T) => string,
   getLabel: (row: T) => string
 ): ShareBreakdownItem[] {
-  return (rows ?? []).map((row) => ({
-    key: getKey(row),
-    label: getLabel(row),
-    conversations_count: row.conversations_count,
-    share: row.share,
-  }));
+  return (rows ?? [])
+    .filter((row) => row.conversations_count > 0)
+    .map((row) => ({
+      key: getKey(row),
+      label: getLabel(row),
+      conversations_count: row.conversations_count,
+      share: row.share,
+    }));
 }

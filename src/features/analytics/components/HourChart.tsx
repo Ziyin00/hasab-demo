@@ -26,7 +26,8 @@ export function HourChart({ data, loading }: HourChartProps) {
     return <Skeleton className="h-56 w-full rounded-xl" />;
   }
 
-  if (!data.length) {
+  const total = data.reduce((sum, d) => sum + d.conversations_count, 0);
+  if (!data.length || total === 0) {
     return <EmptyState icon={Clock} message="No hourly activity in this range." />;
   }
 

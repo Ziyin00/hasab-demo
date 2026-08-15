@@ -6,6 +6,7 @@ import { ConversationInbox } from "./ConversationInbox";
 import type { AnalyticsRange } from "../types/analytics.types";
 
 const RANGES: { label: string; value: AnalyticsRange }[] = [
+  { label: "24H", value: "24h" },
   { label: "7D", value: "7d" },
   { label: "14D", value: "14d" },
   { label: "30D", value: "30d" },

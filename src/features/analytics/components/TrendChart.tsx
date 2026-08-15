@@ -75,7 +75,10 @@ interface TrendChartProps {
 }
 
 export function TrendChart({ data }: TrendChartProps) {
-  if (!data || data.length === 0) {
+  const hasVolume = data?.some(
+    (d) => d.messages > 0 || d.conversations_replied > 0 || d.conversations_abandoned > 0
+  );
+  if (!data?.length || !hasVolume) {
     return <EmptyState icon={LineChart} message="No trend data for this period." />;
   }
 

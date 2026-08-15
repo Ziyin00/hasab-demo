@@ -1,6 +1,6 @@
 import type { ClientMetadata } from "@/lib/client-metadata";
 
-export type AnalyticsRange = "7d" | "14d" | "30d" | "90d";
+export type AnalyticsRange = "24h" | "7d" | "14d" | "30d" | "90d";
 
 export interface AnalyticsSummary {
   total_messages: number;
