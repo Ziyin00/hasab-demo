@@ -15,8 +15,13 @@ export interface TelegramAccessControl {
   prompt_message?: string | null;
   denied_message?: string | null;
   share_button_text?: string | null;
-  allowed_phones: { last4: string | null }[];
+  allowed_phones: AccessPhoneMask[];
   allowed_count: number;
+}
+
+export interface AccessPhoneMask {
+  id: string;
+  last4: string | null;
 }
 
 export interface TelegramMiniAppSettings {
@@ -55,6 +60,7 @@ export interface TelegramBot {
   is_active: boolean;
   last_webhook_at: string | null;
   telegram_url: string | null;
+  profile_photo_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +79,7 @@ export interface TelegramBotsListData {
 
 export interface CreateTelegramBotPayload {
   bot_token: string;
+  name?: string;
   mode?: TelegramBotMode;
   welcome_message?: string | null;
   about?: string | null;
@@ -118,6 +125,43 @@ export interface UpdateTelegramBotPayload {
 export interface UpdateTelegramAccessPayload {
   phones?: string[];
   enabled?: boolean;
+}
+
+export type TelegramAccessImportMode = "replace" | "merge" | "remove";
+
+export interface TelegramAccessImportResult {
+  mode: TelegramAccessImportMode;
+  rows_read: number;
+  imported: number;
+  removed?: number;
+  not_found?: number;
+  duplicates_in_file: number;
+  invalid: number;
+  skipped_existing: number;
+  allowed_count: number;
+}
+
+export interface RemoveTelegramAccessPayload {
+  phones?: string[];
+  ids?: string[];
+}
+
+export interface RemoveTelegramAccessResponse {
+  bot: TelegramBot;
+  removed: number;
+  not_found: number;
+  allowed_count: number;
+}
+
+export interface ImportTelegramAccessPayload {
+  file: File;
+  mode?: TelegramAccessImportMode;
+  enabled?: boolean;
+}
+
+export interface ImportTelegramAccessResponse {
+  bot: TelegramBot;
+  import: TelegramAccessImportResult;
 }
 
 export const DEFAULT_TELEGRAM_SETTINGS: TelegramBotSettings = {

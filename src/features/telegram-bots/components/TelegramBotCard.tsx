@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Radio,
   AtSign,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 import type { TelegramBot } from "../types/telegram-bot.types";
 import { useDeleteTelegramBot } from "../hooks/useTelegramBots";
 import { timeAgo } from "../utils/format";
+import { BotAvatar } from "./BotAvatar";
 
 interface TelegramBotCardProps {
   bot: TelegramBot;
@@ -38,7 +40,13 @@ export function TelegramBotCard({ bot }: TelegramBotCardProps) {
     <>
       <div className="space-y-4 rounded-xl border bg-card p-5 transition-colors hover:border-primary/30">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-start gap-3">
+            <BotAvatar
+              src={bot.profile_photo_url}
+              initials={(bot.name || bot.bot_username || "B").replace(/^@/, "").slice(0, 2).toUpperCase()}
+              className="h-10 w-10"
+            />
+            <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="truncate text-sm font-semibold">{bot.name}</h3>
               {bot.is_active ? (
@@ -63,6 +71,13 @@ export function TelegramBotCard({ bot }: TelegramBotCardProps) {
                 <span className="font-mono text-muted-foreground/70">No username</span>
               )}
               <span className="rounded bg-muted/50 px-1.5 py-0.5 capitalize">{bot.mode}</span>
+              {bot.settings?.access_control?.enabled && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  <ShieldCheck className="h-3 w-3" />
+                  {bot.settings.access_control.allowed_count} phones
+                </span>
+              )}
+            </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">

@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Camera,
   ExternalLink,
-  ImagePlus,
   Loader2,
   RefreshCw,
   Save,
   Send,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ import {
   useCreateTelegramBot,
   useRefreshTelegramWebhook,
   useSyncTelegramCommands,
-  useUpdateTelegramAccess,
   useUpdateTelegramBot,
 } from "../hooks/useTelegramBots";
 import type {
@@ -43,7 +41,8 @@ import type {
   UpdateTelegramBotPayload,
 } from "../types/telegram-bot.types";
 import { DEFAULT_TELEGRAM_SETTINGS } from "../types/telegram-bot.types";
-import { isHttpsUrl, timeAgo } from "../utils/format";
+import { botProfilePhotoUrl, isHttpsUrl, miniAppUrlError, timeAgo } from "../utils/format";
+import { cn } from "@/lib/utils";
 import { AccessEditor } from "./AccessEditor";
 import { CommandsEditor } from "./CommandsEditor";
 
@@ -52,6 +51,8 @@ const MODES: { label: string; value: TelegramBotMode; hint: string }[] = [
   { label: "Mini App", value: "mini_app", hint: "Prefer the Web App button" },
   { label: "Hybrid", value: "hybrid", hint: "Native chat + Mini App" },
 ];
+
+const MAX_MINI_APP_BUTTON = 10;
 
 const LANGS = [
   { value: "en", label: "English" },
@@ -96,13 +97,6 @@ function emptyForm(): FormState {
   };
 }
 
-function parseIds(raw: string): number[] {
-  return raw
-    .split(/[,\s]+/)
-    .map((s) => parseInt(s.trim(), 10))
-    .filter((n) => !Number.isNaN(n));
-}
-
 function mergeSettings(bot: TelegramBot): TelegramBotSettings {
   const s = bot.settings ?? {};
   return {
@@ -124,6 +118,169 @@ function mergeSettings(bot: TelegramBot): TelegramBotSettings {
   };
 }
 
+function parseIds(raw: string): number[] {
+  return raw
+    .split(/[,\s]+/)
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !Number.isNaN(n));
+}
+
+function FieldLabel({
+  children,
+  required,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+      {required ? <span className="text-destructive"> *</span> : null}
+    </Label>
+  );
+}
+
+function ModeSelector({
+  value,
+  onChange,
+}: {
+  value: TelegramBotMode;
+  onChange: (mode: TelegramBotMode) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {MODES.map((mode) => (
+        <button
+          key={mode.value}
+          type="button"
+          onClick={() => onChange(mode.value)}
+          className={cn(
+            "rounded-lg border px-3 py-3 text-left transition-colors",
+            value === mode.value
+              ? "border-primary bg-primary/8 ring-1 ring-primary/20"
+              : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+          )}
+        >
+          <p className="text-sm font-medium">{mode.label}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{mode.hint}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LanguageSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {LANGS.map((lang) => (
+          <SelectItem key={lang.value} value={lang.value}>
+            {lang.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ProfilePhotoField({
+  preview,
+  initials,
+  onPick,
+  onRemove,
+  removing,
+}: {
+  preview: string | null;
+  initials?: string;
+  onPick: (file: File | null) => void;
+  onRemove?: () => void;
+  removing?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [preview]);
+
+  const showPhoto = Boolean(preview) && !failed;
+
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-1.5">
+      <label
+        className="group relative h-20 w-20 cursor-pointer overflow-hidden rounded-full border bg-muted/40 shadow-xs"
+        title="Upload or take a photo"
+      >
+        {showPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preview!}
+            alt="Profile"
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+            {initials?.slice(0, 2).toUpperCase() || <Camera className="h-5 w-5" />}
+          </span>
+        )}
+        <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+          <Camera className="h-5 w-5 text-white" />
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => {
+            onPick(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {onRemove && showPhoto && !removing && (
+        <button
+          type="button"
+          className="text-[11px] text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+        >
+          Remove
+        </button>
+      )}
+      {removing && !preview && (
+        <p className="max-w-20 text-center text-[10px] leading-tight text-amber-700 dark:text-amber-400">
+          Cleared on save
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ActiveToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Active
+      </span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
 interface TelegramBotFormPageProps {
   bot?: TelegramBot | null;
   loading?: boolean;
@@ -137,7 +294,6 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
   const { mutate: update, isPending: updating } = useUpdateTelegramBot();
   const { mutate: syncCommands, isPending: syncing } = useSyncTelegramCommands();
   const { mutate: refreshWebhook, isPending: refreshing } = useRefreshTelegramWebhook();
-  const { mutate: updateAccess, isPending: savingAccess } = useUpdateTelegramAccess();
   const { data: widgets } = useChatbotWidgets();
 
   const isPending = creating || updating;
@@ -175,6 +331,13 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
     return () => URL.revokeObjectURL(url);
   }, [form.profile_photo]);
 
+  const displayPhoto = form.remove_profile_photo
+    ? null
+    : photoPreview ?? botProfilePhotoUrl(bot);
+
+  const photoInitials = (form.name || bot?.name || bot?.bot_username || "B").replace(/^@/, "");
+  const miniUrlError = miniAppUrlError(form.settings.mini_app.url ?? "");
+
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
@@ -189,7 +352,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       return false;
     }
     if (!isHttpsUrl(mini.url.trim())) {
-      toast.error("Mini App URL must be HTTPS");
+      toast.error(miniAppUrlError(mini.url) ?? "Mini App URL must be HTTPS");
       return false;
     }
     return true;
@@ -204,6 +367,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
 
     const payload: CreateTelegramBotPayload = {
       bot_token: form.bot_token.trim(),
+      name: form.name.trim() || undefined,
       mode: form.mode,
       welcome_message: form.welcome_message || null,
       about: form.about || null,
@@ -281,8 +445,8 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       set("profile_photo", null);
       return;
     }
-    if (!file.type.includes("jpeg") && !file.name.toLowerCase().endsWith(".jpg")) {
-      toast.error("Profile photo must be a JPG");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Profile photo must be an image");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -321,8 +485,8 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {isEdit
-              ? "Update profile, commands, ACL, Mini App, and features."
-              : "Paste a BotFather token. Name and username come from Telegram."}
+              ? "Update profile, commands, phone allowlist, Mini App, and features."
+              : "Connect a BotFather token — name and username are pulled from Telegram automatically."}
           </p>
           {isEdit && bot?.bot_username && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -362,120 +526,189 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       </div>
 
       {!isEdit ? (
-        <div className="space-y-5 rounded-xl border bg-card px-6 py-6">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              BotFather token <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={form.bot_token}
-              onChange={(e) => set("bot_token", e.target.value)}
-              placeholder="123456:AA..."
-              className="font-mono text-sm"
-              autoComplete="off"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              From @BotFather → /newbot or /token. Never shown again after create (only masked).
-            </p>
-          </div>
+        <div className="rounded-xl border bg-card">
+          <Tabs defaultValue="general">
+            <TabsList className="h-11 w-full justify-start gap-1 rounded-t-xl rounded-b-none border-b bg-transparent px-4">
+              <TabsTrigger value="general" className="text-xs">
+                General
+              </TabsTrigger>
+              <TabsTrigger value="features" className="text-xs">
+                Features
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="text-xs">
+                Advanced
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              About (optional)
-            </Label>
-            <Input
-              value={form.about}
-              onChange={(e) => set("about", e.target.value)}
-              placeholder="Official support bot"
-              maxLength={120}
-              className="text-sm"
-            />
-            <p className="text-[11px] text-muted-foreground">{form.about.length}/120</p>
-          </div>
+            <TabsContent value="general" className="mt-0 space-y-5 px-6 py-6">
+              <div className="space-y-1.5">
+                <FieldLabel required>BotFather token</FieldLabel>
+                <Input
+                  value={form.bot_token}
+                  onChange={(e) => set("bot_token", e.target.value)}
+                  placeholder="1234567890:AA..."
+                  className="font-mono text-sm"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  From @BotFather → /newbot or /token. Stored masked — never shown in full again.
+                </p>
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Mode
-              </Label>
-              <Select
-                value={form.mode}
-                onValueChange={(v) => set("mode", v as TelegramBotMode)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODES.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Default language
-              </Label>
-              <Select
-                value={form.default_language}
-                onValueChange={(v) => set("default_language", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LANGS.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>
-                      {l.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+              <div className="flex items-start gap-4">
+                <ProfilePhotoField preview={displayPhoto} initials={photoInitials} onPick={onPickPhoto} />
+                <div className="min-w-0 max-w-sm flex-1 space-y-1.5">
+                  <FieldLabel>Display name</FieldLabel>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    maxLength={64}
+                    className="text-sm"
+                    placeholder="Pulled from BotFather if left empty"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Optional. Telegram name is used if you leave this blank.
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 pt-5">
+                  <ActiveToggle checked={form.is_active} onChange={(v) => set("is_active", v)} />
+                </div>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Welcome message
-            </Label>
-            <Textarea
-              value={form.welcome_message}
-              onChange={(e) => set("welcome_message", e.target.value)}
-              rows={3}
-              className="resize-none text-sm"
-              maxLength={4000}
-            />
-          </div>
+              <div className="space-y-1.5">
+                <FieldLabel>About</FieldLabel>
+                <Input
+                  value={form.about}
+                  onChange={(e) => set("about", e.target.value)}
+                  placeholder="Official support bot for Acme customers"
+                  maxLength={120}
+                  className="text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {form.about.length}/120 — Telegram short description shown in the bot profile.
+                </p>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Profile photo (JPG, optional)
-            </Label>
-            <Input
-              type="file"
-              accept="image/jpeg,.jpg"
-              onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
-              className="text-sm"
-            />
-            {photoPreview && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoPreview}
-                alt="Preview"
-                className="mt-2 h-16 w-16 rounded-full object-cover border"
-              />
-            )}
-          </div>
+              <div className="space-y-1.5">
+                <FieldLabel>Welcome message</FieldLabel>
+                <Textarea
+                  value={form.welcome_message}
+                  onChange={(e) => set("welcome_message", e.target.value)}
+                  rows={3}
+                  className="resize-none text-sm"
+                  maxLength={4000}
+                  placeholder="Hi! Ask me anything about our products."
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Sent when a visitor starts a conversation.
+                </p>
+              </div>
 
-          <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Active</p>
-              <p className="text-xs text-muted-foreground">Inactive bots reject Telegram webhooks.</p>
-            </div>
-            <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
-          </div>
+              <div className="space-y-2">
+                <FieldLabel>Bot mode</FieldLabel>
+                <ModeSelector value={form.mode} onChange={(mode) => set("mode", mode)} />
+              </div>
+
+              <div className="grid gap-4 sm:max-w-xs">
+                <div className="space-y-1.5">
+                  <FieldLabel>Default language</FieldLabel>
+                  <LanguageSelect
+                    value={form.default_language}
+                    onChange={(v) => set("default_language", v)}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="features" className="mt-0 space-y-4 px-6 py-6">
+              <p className="text-xs text-muted-foreground">
+                Choose how visitors interact in Telegram. You can change these anytime after create.
+              </p>
+              <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">Free-text chat</p>
+                  <p className="text-xs text-muted-foreground">
+                    When off, visitors are guided to the Mini App button instead of chatting inline.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.settings.features.chat}
+                  onCheckedChange={(v) =>
+                    setSettings({
+                      features: { ...form.settings.features, chat: v },
+                    })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">Voice notes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Accept Telegram voice/audio, transcribe with ASR, then reply in chat.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.settings.features.voice}
+                  onCheckedChange={(v) =>
+                    setSettings({
+                      features: { ...form.settings.features, voice: v },
+                    })
+                  }
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="advanced" className="mt-0 space-y-5 px-6 py-6">
+              <div className="space-y-1.5">
+                <FieldLabel>Rate limit / minute</FieldLabel>
+                <Input
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={form.rate_limit_per_minute}
+                  onChange={(e) => set("rate_limit_per_minute", Number(e.target.value))}
+                  className="max-w-[8rem] text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Max messages per visitor per minute. Default is 45.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel>Chat context IDs</FieldLabel>
+                <Input
+                  value={form.chat_context_ids_raw}
+                  onChange={(e) => set("chat_context_ids_raw", e.target.value)}
+                  placeholder="12, 13"
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Comma-separated numeric IDs. Leave empty to use account defaults.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel>RAG store IDs</FieldLabel>
+                <Input
+                  value={form.rag_store_ids_raw}
+                  onChange={(e) => set("rag_store_ids_raw", e.target.value)}
+                  placeholder="4"
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Knowledge base stores for retrieval. Leave empty for account defaults.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Phone allowlist, slash commands, Mini App URL, and webhook tools are available on
+                  the edit page after the bot is created.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       ) : (
         <div className="rounded-xl border bg-card">
@@ -506,27 +739,40 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
 
             {/* General */}
             <TabsContent value="general" className="mt-0 space-y-5 px-6 py-6">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Display name
-                </Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  maxLength={64}
-                  className="text-sm"
+              <div className="flex items-start gap-4">
+                <ProfilePhotoField
+                  preview={displayPhoto}
+                  initials={photoInitials}
+                  onPick={onPickPhoto}
+                  removing={form.remove_profile_photo}
+                  onRemove={() => {
+                    set("profile_photo", null);
+                    setPhotoPreview(null);
+                    set("remove_profile_photo", true);
+                  }}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Synced to Telegram via setMyName. Username{" "}
-                  <code className="rounded bg-muted px-1 font-mono">@{bot!.bot_username}</code> is
-                  read-only.
-                </p>
+                <div className="min-w-0 max-w-sm flex-1 space-y-1.5">
+                  <FieldLabel>Display name</FieldLabel>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    maxLength={64}
+                    className="text-sm"
+                    placeholder={bot!.name}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Synced to Telegram via setMyName. Username{" "}
+                    <code className="rounded bg-muted px-1 font-mono">@{bot!.bot_username}</code> is
+                    read-only.
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 pt-5">
+                  <ActiveToggle checked={form.is_active} onChange={(v) => set("is_active", v)} />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  About
-                </Label>
+                <FieldLabel>About</FieldLabel>
                 <Input
                   value={form.about}
                   onChange={(e) => set("about", e.target.value)}
@@ -539,9 +785,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Welcome message
-                </Label>
+                <FieldLabel>Welcome message</FieldLabel>
                 <Textarea
                   value={form.welcome_message}
                   onChange={(e) => set("welcome_message", e.target.value)}
@@ -551,51 +795,21 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <FieldLabel>Bot mode</FieldLabel>
+                <ModeSelector value={form.mode} onChange={(mode) => set("mode", mode)} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Mode
-                  </Label>
-                  <Select
-                    value={form.mode}
-                    onValueChange={(v) => set("mode", v as TelegramBotMode)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MODES.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>
-                          {m.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Language
-                  </Label>
-                  <Select
+                  <FieldLabel>Default language</FieldLabel>
+                  <LanguageSelect
                     value={form.default_language}
-                    onValueChange={(v) => set("default_language", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGS.map((l) => (
-                        <SelectItem key={l.value} value={l.value}>
-                          {l.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => set("default_language", v)}
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Rate limit / min
-                  </Label>
+                  <FieldLabel>Rate limit / minute</FieldLabel>
                   <Input
                     type="number"
                     min={1}
@@ -605,63 +819,6 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                     className="text-sm"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-3 rounded-xl border bg-muted/10 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">Profile photo</p>
-                    <p className="text-xs text-muted-foreground">JPG only, max 5MB.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">
-                      <ImagePlus className="h-3.5 w-3.5" />
-                      Replace
-                      <input
-                        type="file"
-                        accept="image/jpeg,.jpg"
-                        className="hidden"
-                        onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
-                      />
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={() => {
-                        set("profile_photo", null);
-                        set("remove_profile_photo", true);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-                {photoPreview && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photoPreview}
-                    alt="New photo"
-                    className="h-14 w-14 rounded-full border object-cover"
-                  />
-                )}
-                {form.remove_profile_photo && !photoPreview && (
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Avatar will be cleared on save.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">Active</p>
-                  <p className="text-xs text-muted-foreground">
-                    Inactive bots reject incoming webhooks.
-                  </p>
-                </div>
-                <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
               </div>
             </TabsContent>
 
@@ -702,9 +859,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
             {/* Contexts */}
             <TabsContent value="contexts" className="mt-0 space-y-5 px-6 py-6">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Chat Context IDs
-                </Label>
+                <FieldLabel>Chat context IDs</FieldLabel>
                 <Input
                   value={form.chat_context_ids_raw}
                   onChange={(e) => set("chat_context_ids_raw", e.target.value)}
@@ -712,42 +867,36 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                   className="font-mono text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Same semantics as widgets. Leave empty for account defaults.
+                  Comma-separated numeric IDs. Leave empty to use account defaults.
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  RAG Store IDs
-                </Label>
+                <FieldLabel>RAG store IDs</FieldLabel>
                 <Input
                   value={form.rag_store_ids_raw}
                   onChange={(e) => set("rag_store_ids_raw", e.target.value)}
                   placeholder="4"
                   className="font-mono text-sm"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Knowledge base stores for retrieval. Leave empty for account defaults.
+                </p>
               </div>
             </TabsContent>
 
             {/* Access */}
             <TabsContent value="access" className="mt-0 px-6 py-6">
               <AccessEditor
+                botId={bot!.id}
                 access={form.settings.access_control}
-                saving={savingAccess}
                 onAccessCopyChange={(patch) =>
                   setSettings({
                     access_control: { ...form.settings.access_control, ...patch },
                   })
                 }
-                onSaveAccess={(payload) =>
-                  updateAccess(
-                    { id: bot!.id, payload },
-                    {
-                      onSuccess: (updated) => {
-                        setSettings({ access_control: mergeSettings(updated).access_control });
-                      },
-                    }
-                  )
-                }
+                onBotUpdated={(updated) => {
+                  setSettings({ access_control: mergeSettings(updated).access_control });
+                }}
               />
             </TabsContent>
 
@@ -771,9 +920,10 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Mini App URL (HTTPS)
-                </Label>
+                <FieldLabel>Mini App URL (HTTPS)</FieldLabel>
+                {miniUrlError && (
+                  <p className="text-xs font-medium text-destructive">{miniUrlError}</p>
+                )}
                 <Input
                   value={form.settings.mini_app.url ?? ""}
                   onChange={(e) =>
@@ -785,30 +935,32 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                     })
                   }
                   placeholder="https://customer.com/telegram-app"
-                  className="font-mono text-sm"
+                  className={cn("font-mono text-sm", miniUrlError && "border-destructive")}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Button label
-                </Label>
+                <FieldLabel>Button label</FieldLabel>
                 <Input
                   value={form.settings.mini_app.button_text ?? ""}
                   onChange={(e) =>
                     setSettings({
                       mini_app: {
                         ...form.settings.mini_app,
-                        button_text: e.target.value,
+                        button_text: e.target.value.slice(0, MAX_MINI_APP_BUTTON),
                       },
                     })
                   }
+                  maxLength={MAX_MINI_APP_BUTTON}
                   placeholder="Open chat"
                   className="text-sm"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  {(form.settings.mini_app.button_text ?? "").length}/{MAX_MINI_APP_BUTTON} characters
+                </p>
               </div>
 
-              <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/3 px-4 py-3">
+              {/* <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/3 px-4 py-3">
                 <p className="text-xs font-semibold">Mini App bind checklist</p>
                 <ul className="list-disc space-y-1 pl-4 text-[11px] text-muted-foreground">
                   <li>
@@ -842,7 +994,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
             </TabsContent>
 
             {/* Features */}
@@ -905,9 +1057,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Rotate BotFather token
-                </Label>
+                <FieldLabel>Rotate BotFather token</FieldLabel>
                 <Input
                   value={form.rotate_token}
                   onChange={(e) => set("rotate_token", e.target.value)}

@@ -4,13 +4,23 @@ import type { AxiosError } from "axios";
 import { telegramBotApi } from "../api/telegram-bot.api";
 import type {
   CreateTelegramBotPayload,
+  ImportTelegramAccessPayload,
+  RemoveTelegramAccessPayload,
   UpdateTelegramAccessPayload,
   UpdateTelegramBotPayload,
 } from "../types/telegram-bot.types";
 
 const BOTS_KEY = ["telegram-bots"] as const;
 
-function errMessage(err: AxiosError<{ message?: string }>, fallback: string) {
+function errMessage(
+  err: AxiosError<{ message?: string; errors?: Record<string, string[] | string> }>,
+  fallback: string
+) {
+  const errors = err.response?.data?.errors;
+  if (errors) {
+    const first = Object.values(errors).flatMap((v) => (Array.isArray(v) ? v : [v]))[0];
+    if (first) return first;
+  }
   return err.response?.data?.message ?? fallback;
 }
 
@@ -51,6 +61,7 @@ export function useUpdateTelegramBot() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdateTelegramBotPayload }) =>
       telegramBotApi.update(id, payload),
     onSuccess: (bot) => {
+      queryClient.setQueryData(["telegram-bot", bot.id], bot);
       queryClient.invalidateQueries({ queryKey: BOTS_KEY });
       queryClient.invalidateQueries({ queryKey: ["telegram-bot", bot.id] });
       toast.success("Bot saved");
@@ -113,10 +124,73 @@ export function useUpdateTelegramAccess() {
     onSuccess: (bot) => {
       queryClient.invalidateQueries({ queryKey: BOTS_KEY });
       queryClient.invalidateQueries({ queryKey: ["telegram-bot", bot.id] });
-      toast.success("Access list updated");
     },
-    onError: (err: AxiosError<{ message?: string }>) => {
+    onError: (err: AxiosError<{ message?: string; errors?: Record<string, string[] | string> }>) => {
       toast.error(errMessage(err, "Failed to update access"));
+    },
+  });
+}
+
+function toastAccessRemoved(removed: number, notFound: number, allowedCount: number, last4?: string | null) {
+  if (allowedCount === 0) {
+    toast.success("Allowlist is empty. Phone restriction was turned off.");
+    return;
+  }
+  if (last4 && removed === 1 && notFound === 0) {
+    toast.success(`Removed number ending in ${last4}.`);
+    return;
+  }
+  if (notFound > 0) {
+    toast.success(`Removed ${removed}. ${notFound} were not on the list.`);
+    return;
+  }
+  toast.success(`Removed ${removed} number${removed === 1 ? "" : "s"}`);
+}
+
+export function useRemoveTelegramAccessPhones() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: RemoveTelegramAccessPayload;
+      last4?: string | null;
+    }) => telegramBotApi.removePhones(id, payload),
+    onSuccess: ({ bot, removed, not_found, allowed_count }, variables) => {
+      queryClient.invalidateQueries({ queryKey: BOTS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["telegram-bot", bot.id] });
+      toastAccessRemoved(removed, not_found, allowed_count, variables.last4);
+    },
+    onError: (err: AxiosError<{ message?: string; errors?: Record<string, string[] | string> }>) => {
+      toast.error(errMessage(err, "Failed to remove phone"));
+    },
+  });
+}
+
+export function useImportTelegramAccess() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ImportTelegramAccessPayload }) =>
+      telegramBotApi.importAccess(id, payload),
+    onSuccess: ({ bot, import: result }) => {
+      queryClient.invalidateQueries({ queryKey: BOTS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["telegram-bot", bot.id] });
+      if (result?.mode === "remove") {
+        toastAccessRemoved(result.removed ?? 0, result.not_found ?? 0, result.allowed_count ?? 0);
+        return;
+      }
+      const imported = result?.imported ?? 0;
+      const skipped = result?.invalid ?? 0;
+      toast.success(
+        skipped > 0
+          ? `Imported ${imported} numbers. ${skipped} rows skipped.`
+          : `Imported ${imported} phone numbers`
+      );
+    },
+    onError: (err: AxiosError<{ message?: string; errors?: Record<string, string[] | string> }>) => {
+      toast.error(errMessage(err, "Failed to import allowlist"));
     },
   });
 }
