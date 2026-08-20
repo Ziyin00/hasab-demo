@@ -75,12 +75,18 @@ function toUpdateFormData(payload: UpdateTelegramBotPayload): FormData {
   return fd;
 }
 
-function normalizeBot(raw: TelegramBot | null | undefined): TelegramBot {
-  if (!raw) return raw as TelegramBot;
+function normalizeBot(raw: TelegramBot): TelegramBot {
   return {
     ...raw,
     profile_photo_url: botProfilePhotoUrl(raw),
   };
+}
+
+function asBot(raw: unknown): TelegramBot {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Invalid telegram bot response");
+  }
+  return normalizeBot(raw as TelegramBot);
 }
 
 function needsMultipart(payload: CreateTelegramBotPayload | UpdateTelegramBotPayload): boolean {
@@ -95,7 +101,7 @@ export const telegramBotApi = {
     const r = await chatbotApiClient.get("/telegram-bots");
     const data = r.data.data;
     return {
-      bots: (data?.bots ?? (Array.isArray(data) ? data : [])).map(normalizeBot),
+      bots: (data?.bots ?? (Array.isArray(data) ? data : [])).map(asBot),
       pagination: data?.pagination ?? {
         current_page: 1,
         per_page: 15,
@@ -107,7 +113,7 @@ export const telegramBotApi = {
 
   get: async (id: number): Promise<TelegramBot> => {
     const r = await chatbotApiClient.get(`/telegram-bots/${id}`);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   create: async (payload: CreateTelegramBotPayload): Promise<TelegramBot> => {
@@ -115,12 +121,12 @@ export const telegramBotApi = {
       const r = await chatbotApiClient.post("/telegram-bots", toCreateFormData(payload), {
         headers: { "Content-Type": undefined },
       });
-      return normalizeBot(r.data.data?.bot ?? r.data.data);
+      return asBot(r.data.data?.bot ?? r.data.data);
     }
     const { profile_photo: _photo, ...json } = payload;
     void _photo;
     const r = await chatbotApiClient.post("/telegram-bots", json);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   update: async (id: number, payload: UpdateTelegramBotPayload): Promise<TelegramBot> => {
@@ -128,13 +134,13 @@ export const telegramBotApi = {
       const r = await chatbotApiClient.post(`/telegram-bots/${id}`, toUpdateFormData(payload), {
         headers: { "Content-Type": undefined },
       });
-      return normalizeBot(r.data.data?.bot ?? r.data.data);
+      return asBot(r.data.data?.bot ?? r.data.data);
     }
     const { profile_photo: _photo, remove_profile_photo: _rm, ...json } = payload;
     void _photo;
     void _rm;
     const r = await chatbotApiClient.patch(`/telegram-bots/${id}`, json);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   delete: async (id: number): Promise<void> => {
@@ -143,12 +149,12 @@ export const telegramBotApi = {
 
   refreshWebhook: async (id: number): Promise<TelegramBot> => {
     const r = await chatbotApiClient.post(`/telegram-bots/${id}/webhook/refresh`);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   syncCommands: async (id: number): Promise<TelegramBot> => {
     const r = await chatbotApiClient.post(`/telegram-bots/${id}/commands/sync`);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   updateAccess: async (
@@ -156,7 +162,7 @@ export const telegramBotApi = {
     payload: UpdateTelegramAccessPayload
   ): Promise<TelegramBot> => {
     const r = await chatbotApiClient.put(`/telegram-bots/${id}/access`, payload);
-    return normalizeBot(r.data.data?.bot ?? r.data.data);
+    return asBot(r.data.data?.bot ?? r.data.data);
   },
 
   removePhones: async (
@@ -166,7 +172,7 @@ export const telegramBotApi = {
     const r = await chatbotApiClient.post(`/telegram-bots/${id}/access/phones/remove`, payload);
     const data = r.data.data ?? {};
     return {
-      bot: normalizeBot(data.bot ?? r.data.data),
+      bot: asBot(data.bot ?? r.data.data),
       removed: data.removed ?? 0,
       not_found: data.not_found ?? 0,
       allowed_count: data.allowed_count ?? 0,
@@ -187,7 +193,7 @@ export const telegramBotApi = {
       headers: { "Content-Type": undefined },
     });
     return {
-      bot: normalizeBot(r.data.data?.bot ?? r.data.data),
+      bot: asBot(r.data.data?.bot ?? r.data.data),
       import: r.data.data?.import,
     };
   },
