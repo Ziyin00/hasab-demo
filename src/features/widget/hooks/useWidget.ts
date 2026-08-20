@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { AxiosError } from "axios";
+import { useAuthStore } from "@/store/auth.store";
 import { widgetApi } from "../api/widget.api";
 import type { WidgetConfig } from "../types/widget.types";
 import {
@@ -9,11 +10,12 @@ import {
 } from "./useLocalWidgetConfig";
 
 export function useWidgetConfig(options?: { enabled?: boolean }) {
+  const authenticated = useAuthStore((s) => s.authenticated);
   return useQuery({
     queryKey: ["widget", "config"],
     queryFn: widgetApi.getConfig,
     staleTime: 5 * 60 * 1000,
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && authenticated,
   });
 }
 
@@ -34,8 +36,10 @@ export function useUpdateWidgetConfig() {
 }
 
 export function useWidgetKeys() {
+  const authenticated = useAuthStore((s) => s.authenticated);
   return useQuery({
     queryKey: ["widget", "keys"],
     queryFn: widgetApi.getKeys,
+    enabled: authenticated,
   });
 }

@@ -22,8 +22,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useWidgetKeys } from "../hooks/useWidget";
 import { apikeyApi } from "@/features/api-key/api/apikey.api";
-
-const API_KEY_STORAGE = "hasab_api_test_key";
+import {
+  HASAB_API_KEY_QUERY,
+  HASAB_API_KEY_STORAGE,
+} from "@/features/api-key/hooks/useHasabApiKey";
 
 // ── Shared copy button ────────────────────────────────────────────────────────
 
@@ -95,9 +97,8 @@ export function ApiKeysPage() {
   const queryClient = useQueryClient();
   const { data: keys, isLoading: keysLoading } = useWidgetKeys();
 
-  // Fetch the API key on mount
   const { data: apiKey, isLoading: keyLoading, isError: keyError } = useQuery({
-    queryKey: ["hasab-api-key"],
+    queryKey: HASAB_API_KEY_QUERY,
     queryFn: apikeyApi.getApiKey,
     staleTime: 10 * 60 * 1000,
     retry: 1,
@@ -105,7 +106,7 @@ export function ApiKeysPage() {
 
   // Sync fetched key to localStorage so context page STT/chat tests can use it
   useEffect(() => {
-    if (apiKey) localStorage.setItem(API_KEY_STORAGE, apiKey);
+    if (apiKey) localStorage.setItem(HASAB_API_KEY_STORAGE, apiKey);
   }, [apiKey]);
 
   const [revealed, setRevealed] = useState(false);
@@ -117,17 +118,17 @@ export function ApiKeysPage() {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(API_KEY_STORAGE) ?? "";
+    const saved = localStorage.getItem(HASAB_API_KEY_STORAGE) ?? "";
     setApiKeyInput(saved);
   }, []);
 
   const saveApiKey = () => {
     const trimmed = apiKeyInput.trim();
     if (trimmed) {
-      localStorage.setItem(API_KEY_STORAGE, trimmed);
+      localStorage.setItem(HASAB_API_KEY_STORAGE, trimmed);
       toast.success("API key saved");
     } else {
-      localStorage.removeItem(API_KEY_STORAGE);
+      localStorage.removeItem(HASAB_API_KEY_STORAGE);
       toast.info("API key cleared");
     }
   };
@@ -136,7 +137,8 @@ export function ApiKeysPage() {
     mutationFn: apikeyApi.getApiKey,
     onSuccess: (key) => {
       setApiKeyInput(key);
-      localStorage.setItem(API_KEY_STORAGE, key);
+      localStorage.setItem(HASAB_API_KEY_STORAGE, key);
+      queryClient.setQueryData(HASAB_API_KEY_QUERY, key);
       toast.success("API key loaded from your account");
     },
     onError: () => toast.error("Failed to load API key"),
@@ -153,8 +155,8 @@ export function ApiKeysPage() {
   const { mutate: regenerate, isPending: regenerating } = useMutation({
     mutationFn: apikeyApi.regenerateApiKey,
     onSuccess: (newKey) => {
-      queryClient.setQueryData(["hasab-api-key"], newKey);
-      localStorage.setItem(API_KEY_STORAGE, newKey);
+      queryClient.setQueryData(HASAB_API_KEY_QUERY, newKey);
+      localStorage.setItem(HASAB_API_KEY_STORAGE, newKey);
       setConfirmOpen(false);
       setRevealed(false);
       toast.success("API key regenerated", {

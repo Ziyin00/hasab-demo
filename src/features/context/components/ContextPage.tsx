@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useHasabApiKey } from "@/features/api-key/hooks/useHasabApiKey";
 import { useContextAccess } from "../hooks/useContextAccess";
 import { AccessRequestCard } from "./AccessRequestCard";
 import { ContextTable } from "./ContextTable";
@@ -11,16 +11,11 @@ import { LanguageHelperCard } from "./LanguageHelperCard";
 import { ChatTestTab } from "./ChatTestTab";
 import { SttTestTab } from "./SttTestTab";
 import type { ContextItem } from "../types/context.types";
-
-const API_KEY_STORAGE = "hasab_api_test_key";
+import { useState } from "react";
 
 export function ContextPage() {
-  const [apiKey, setApiKey] = useState("");
+  const { apiKey, isLoading: keyLoading } = useHasabApiKey();
   const [editingContext, setEditingContext] = useState<ContextItem | null>(null);
-
-  useEffect(() => {
-    setApiKey(localStorage.getItem(API_KEY_STORAGE) ?? "");
-  }, []);
 
   const {
     data: accessStatus,
@@ -31,7 +26,7 @@ export function ContextPage() {
 
   const hasAccess = accessStatus?.has_access ?? false;
 
-  if (accessLoading) {
+  if (accessLoading || keyLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full rounded-xl" />

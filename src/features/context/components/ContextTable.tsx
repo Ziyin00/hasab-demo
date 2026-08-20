@@ -78,7 +78,11 @@ export function ContextTable({ apiKey, onEdit }: Props) {
   if (!apiKey) {
     return (
       <div className="rounded-xl border p-10 text-center text-sm text-muted-foreground">
-        Add your API key above to manage contexts.
+        Unable to load your API key. Open{" "}
+        <Link href="/dashboard/api-keys" className="font-medium text-foreground underline underline-offset-2">
+          API Key
+        </Link>{" "}
+        and try again.
       </div>
     );
   }
