@@ -8,15 +8,15 @@ import { normalizeQuickPromptKeys } from "./quickPrompts";
 
 /**
  * CDN embed + public config expect an explicit features object
- * (see live data-settings: audio_upload, tts, quick_prompts, language_selector).
- * Never omit keys — missing `tts` is treated as off by older caches/scripts.
+ * (see live data-settings: audio_upload, quick_prompts, language_selector).
  */
 export function normalizeWidgetFeatures(
   features?: WidgetFeatures | null
 ): Required<WidgetFeatures> {
   return {
     audio_upload: features?.audio_upload === true,
-    tts: features?.tts === true,
+    // TTS integration (disabled): tts: features?.tts === true,
+    tts: false,
     quick_prompts: features?.quick_prompts !== false,
     language_selector: features?.language_selector !== false,
   };

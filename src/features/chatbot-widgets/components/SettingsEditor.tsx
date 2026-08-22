@@ -141,6 +141,7 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
               onCheckedChange={(v) => setFeature("audio_upload", v)}
             />
           </div>
+          {/* TTS integration (disabled):
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Enable TTS replies</p>
@@ -154,6 +155,7 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
               onCheckedChange={(v) => setFeature("tts", v)}
             />
           </div>
+          */}
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Quick Prompts</p>

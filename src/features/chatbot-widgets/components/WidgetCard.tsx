@@ -108,9 +108,11 @@ export function WidgetCard({ widget, onSnippet }: WidgetCardProps) {
             {widget.settings?.features?.audio_upload ? (
               <span className="rounded bg-muted/50 px-1.5 py-0.5">Mic</span>
             ) : null}
+            {/* TTS integration (disabled):
             {widget.settings?.features?.tts ? (
               <span className="rounded bg-muted/50 px-1.5 py-0.5">TTS</span>
             ) : null}
+            */}
           </div>
         </div>
 

@@ -21,9 +21,9 @@ import {
 import {
   normalizeUiLanguageCode,
   resolveLanguageInstruction,
-  shouldRequestTts,
+  // shouldRequestTts,
   toSttLanguageCode,
-  isTtsLanguage,
+  // isTtsLanguage,
 } from "@/features/chatbot-widgets/utils/languageCodes";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -33,9 +33,10 @@ interface Message {
   content: string;
   isError?: boolean;
   isVoice?: boolean;
-  /** Assistant Tigist audio — only set when the visitor had Amharic selected at send time. */
-  playTts?: boolean;
-  replyLang?: string;
+  // TTS integration (disabled):
+  // /** Assistant Tigist audio — only set when the visitor had Amharic selected at send time. */
+  // playTts?: boolean;
+  // replyLang?: string;
   audioUrl?: string;
   ts: Date;
 }
@@ -325,23 +326,24 @@ function VoiceMessage({
   );
 }
 
-/** Soft-fail decode of TTS payload from chat responses (guide §3). */
-function audioUrlFromChatPayload(data: Record<string, unknown>): string | undefined {
-  const b64 = data.audio_base64;
-  if (typeof b64 !== "string" || !b64) return undefined;
-  const contentType =
-    typeof data.audio_content_type === "string" && data.audio_content_type.trim()
-      ? data.audio_content_type
-      : "audio/wav";
-  try {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return URL.createObjectURL(new Blob([bytes], { type: contentType }));
-  } catch {
-    return undefined;
-  }
-}
+// TTS integration (disabled):
+// /** Soft-fail decode of TTS payload from chat responses (guide §3). */
+// function audioUrlFromChatPayload(data: Record<string, unknown>): string | undefined {
+//   const b64 = data.audio_base64;
+//   if (typeof b64 !== "string" || !b64) return undefined;
+//   const contentType =
+//     typeof data.audio_content_type === "string" && data.audio_content_type.trim()
+//       ? data.audio_content_type
+//       : "audio/wav";
+//   try {
+//     const binary = atob(b64);
+//     const bytes = new Uint8Array(binary.length);
+//     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+//     return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+//   } catch {
+//     return undefined;
+//   }
+// }
 
 // ─── Session helpers (conversation lifecycle guide) ──────────────────────────
 // visitor_session_id and chat_history_id both live in localStorage, not
@@ -585,6 +587,8 @@ export function ChatWidget({
   }, [open, lang]);
 
   // ── Send ──────────────────────────────────────────────────────────────────
+  // Language integration: every message carries `language` + `language_instruction`.
+  // TTS integration (disabled): tts / enable_tts / audio_base64 / Tigist player.
 
   const send = async (text: string, isVoice = false, audioUrl?: string) => {
     const trimmed = text.trim();
@@ -605,7 +609,7 @@ export function ChatWidget({
     const chatLang = normalizeUiLanguageCode(lang);
     const langLabel = languageOptions.find((o) => o.code === chatLang)?.label;
     const languageInstruction = resolveLanguageInstruction(chatLang, langLabel);
-    const requestTts = shouldRequestTts(settings?.features?.tts, chatLang);
+    // const requestTts = shouldRequestTts(settings?.features?.tts, chatLang);
 
     const buildBody = (newConversation: boolean) => ({
       message: trimmed,
@@ -614,13 +618,13 @@ export function ChatWidget({
       page_url: window.location.href,
       language: chatLang,
       language_instruction: languageInstruction,
-      tts: requestTts,
-      enable_tts: requestTts,
+      // tts: requestTts,
+      // enable_tts: requestTts,
       visitor_session_id: visitorId,
       client_metadata: {
         ...buildClientMetadata(chatLang),
         language_instruction: languageInstruction,
-        tts: requestTts,
+        // tts: requestTts,
       },
       ...(newConversation
         ? { new_conversation: true }
@@ -633,20 +637,20 @@ export function ChatWidget({
         (r.data?.message as { content?: string })?.content ??
         (r.data?.data as { message?: string })?.message ??
         "No response received.";
-      const audioUrl = requestTts
-        ? audioUrlFromChatPayload(r.data ?? {})
-        : undefined;
-      return { content, audioUrl };
+      // const audioUrl = requestTts
+      //   ? audioUrlFromChatPayload(r.data ?? {})
+      //   : undefined;
+      return { content };
     };
 
     try {
       const r = await apiClient.post("/chat", buildBody(!chatHistoryId), {
         headers: { "X-Visitor-Session-Id": visitorId },
       });
-      const { content, audioUrl } = applyResponse(r);
+      const { content } = applyResponse(r);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content, audioUrl, playTts: requestTts, replyLang: chatLang, ts: new Date() },
+        { role: "assistant", content, ts: new Date() },
       ]);
     } catch (err: unknown) {
       const status = (err as { response?: { status: number } })?.response?.status;
@@ -657,10 +661,10 @@ export function ChatWidget({
           const r2 = await apiClient.post("/chat", buildBody(true), {
             headers: { "X-Visitor-Session-Id": visitorId },
           });
-          const { content, audioUrl } = applyResponse(r2);
+          const { content } = applyResponse(r2);
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content, audioUrl, playTts: requestTts, replyLang: chatLang, ts: new Date() },
+            { role: "assistant", content, ts: new Date() },
           ]);
           return;
         } catch { /* fall through to error message */ }
@@ -1062,9 +1066,11 @@ export function ChatWidget({
                         </div>
                       ) : msg.role === "assistant" && !msg.isError ? (
                         <div className="space-y-1.5">
+                          {/* TTS integration (disabled):
                           {msg.playTts && msg.audioUrl && isTtsLanguage(msg.replyLang ?? lang) ? (
                             <VoiceMessage audioUrl={msg.audioUrl} tone="assistant" />
                           ) : null}
+                          */}
                           <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                         </div>
                       ) : (

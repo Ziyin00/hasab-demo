@@ -1,3 +1,9 @@
+/**
+ * Hasab embed widget (CDN: /widget/v1/hasab-chatbot.js).
+ *
+ * TTS integration (disabled) — see git history:
+ * isTtsLanguage, shouldRequestTts, tts/enable_tts payload, audio_base64 decode, Tigist player.
+ */
 (function () {
   'use strict';
 
@@ -22,6 +28,7 @@
     var langKey = 'hasabChatLang_' + widgetId;
 
     var config = null;
+    // TTS integration (disabled): var widgetFeatures = { tts: false };
     var widgetFeatures = { tts: false };
     var sessionToken = sessionStorage.getItem(tokenKey);
     var mediaRecorder = null;
@@ -100,32 +107,32 @@
       return LANG_INSTRUCTIONS[key] || LANG_INSTRUCTIONS.en;
     }
 
-    function isTtsLanguage(code) {
-      return toLangKey(code) === 'am';
-    }
-
-    /** TTS (Tigist) is Amharic-only — text-only for en/om regardless of widget settings. */
-    function shouldRequestTts(langCode) {
-      return widgetFeatures.tts === true && isTtsLanguage(langCode);
-    }
-
-    function audioUrlFromChatPayload(json) {
-      if (!json) return null;
-      var b64 = json.audio_base64
-        || (json.message && json.message.audio_base64)
-        || (json.data && json.data.audio_base64);
-      if (!b64 || typeof b64 !== 'string') return null;
-      var contentType = (json.audio_content_type && String(json.audio_content_type).trim()) || 'audio/wav';
-      try {
-        var binary = atob(b64);
-        var bytes = new Uint8Array(binary.length);
-        var i;
-        for (i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        return URL.createObjectURL(new Blob([bytes], { type: contentType }));
-      } catch (e) {
-        return null;
-      }
-    }
+    // TTS integration (disabled):
+    // function isTtsLanguage(code) {
+    //   return toLangKey(code) === 'am';
+    // }
+    //
+    // function shouldRequestTts(langCode) {
+    //   return widgetFeatures.tts === true && isTtsLanguage(langCode);
+    // }
+    //
+    // function audioUrlFromChatPayload(json) {
+    //   if (!json) return null;
+    //   var b64 = json.audio_base64
+    //     || (json.message && json.message.audio_base64)
+    //     || (json.data && json.data.audio_base64);
+    //   if (!b64 || typeof b64 !== 'string') return null;
+    //   var contentType = (json.audio_content_type && String(json.audio_content_type).trim()) || 'audio/wav';
+    //   try {
+    //     var binary = atob(b64);
+    //     var bytes = new Uint8Array(binary.length);
+    //     var i;
+    //     for (i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    //     return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+    //   } catch (e) {
+    //     return null;
+    //   }
+    // }
 
     function resolveChrome(lang, settingsObj, welcomeMessage) {
       var key = toLangKey(lang);
@@ -398,9 +405,8 @@
     }
 
     function syncWidgetFeatures(cfg) {
-      var s = (cfg && cfg.settings) || {};
-      var f = s.features || {};
-      widgetFeatures = { tts: f.tts === true };
+      // TTS integration (disabled): widgetFeatures = { tts: f.tts === true };
+      widgetFeatures = { tts: false };
     }
 
     function loadConfig() {
@@ -497,7 +503,7 @@
         var langCode = language || getLanguage();
         var chatLang = toLangKey(langCode);
         var instruction = chatLanguageInstruction(langCode);
-        var wantTts = shouldRequestTts(langCode);
+        // var wantTts = shouldRequestTts(langCode);
         var payload = {
           message: text,
           model: 'hasab-1-lite',
@@ -506,11 +512,11 @@
           page_url: window.location.href,
           language: chatLang,
           language_instruction: instruction,
-          tts: wantTts,
-          enable_tts: wantTts,
+          // tts: wantTts,
+          // enable_tts: wantTts,
           client_metadata: Object.assign(clientMetadata(chatLang), {
-            language_instruction: instruction,
-            tts: wantTts
+            language_instruction: instruction
+            // , tts: wantTts
           })
         };
         if (chatHistoryId && !historyRetried) {
@@ -524,8 +530,8 @@
           var content = (json.message && json.message.content) ||
             (json.data && json.data.message && (typeof json.data.message === 'string' ? json.data.message : json.data.message.content)) ||
             null;
-          var audioUrl = wantTts ? audioUrlFromChatPayload(json) : null;
-          return { content: content, audioUrl: audioUrl };
+          // var audioUrl = wantTts ? audioUrlFromChatPayload(json) : null;
+          return { content: content };
         }).catch(function (err) {
           if (err.status === 404 && chatHistoryId && !historyRetried) {
             clearHistory();
@@ -645,9 +651,8 @@
       var theme = (config && config.theme) || {};
       var settings = (config && config.settings) || {};
       var features = settings.features || {};
-      widgetFeatures = {
-        tts: features.tts === true
-      };
+      // TTS integration (disabled): widgetFeatures = { tts: features.tts === true };
+      widgetFeatures = { tts: false };
 
       var primary = cssValue(theme.primary_color, '#3C6278');
       var launcherTheme = theme.launcher || {};
@@ -1101,15 +1106,8 @@
           contentHtml = buildVoicePlayerHtml(msg.audioUrl) +
             (msg.content ? '<p class="voice-caption">' + escapeHtml(msg.content) + '</p>' : '');
         } else if (!isUser && !msg.isError) {
-          var showAssistantTts = msg.playTts === true
-            && msg.audioUrl
-            && isTtsLanguage(msg.replyLang || language);
-          if (showAssistantTts) {
-            contentHtml = buildVoicePlayerHtml(msg.audioUrl) +
-              (msg.content ? '<div class="voice-caption">' + renderMarkdown(msg.content) + '</div>' : '');
-          } else {
-            contentHtml = renderMarkdown(msg.content);
-          }
+          // TTS integration (disabled): assistant Tigist voice player
+          contentHtml = renderMarkdown(msg.content);
         } else {
           contentHtml = escapeHtml(msg.content);
         }
@@ -1243,9 +1241,9 @@
           content: text,
           isError: !!options.isError,
           isVoice: !!options.isVoice,
-          playTts: !!options.playTts,
-          replyLang: options.replyLang || null,
-          audioUrl: options.playTts && options.audioUrl ? options.audioUrl : null,
+          // playTts: !!options.playTts,
+          // replyLang: options.replyLang || null,
+          audioUrl: options.isVoice && options.audioUrl ? options.audioUrl : null,
           ts: new Date()
         });
         renderMessages();
@@ -1361,17 +1359,17 @@
 
       function sendAndRender(text, voiceOptions) {
         voiceOptions = voiceOptions || {};
-        var replyLang = toLangKey(language);
-        var wantTts = shouldRequestTts(replyLang);
+        // var replyLang = toLangKey(language);
+        // var wantTts = shouldRequestTts(replyLang);
         addMessage(text, 'user', { isVoice: voiceOptions.isVoice, audioUrl: voiceOptions.audioUrl });
         setLoading(true);
         sendMessage(text, language).then(function (result) {
           setLoading(false);
           var content = (result && result.content) || (typeof result === 'string' ? result : null);
           addMessage(content || 'No response received.', 'assistant', {
-            playTts: wantTts,
-            replyLang: replyLang,
-            audioUrl: wantTts && result && result.audioUrl ? result.audioUrl : null
+            // playTts: wantTts,
+            // replyLang: replyLang,
+            // audioUrl: wantTts && result && result.audioUrl ? result.audioUrl : null
           });
         }).catch(function () {
           setLoading(false);

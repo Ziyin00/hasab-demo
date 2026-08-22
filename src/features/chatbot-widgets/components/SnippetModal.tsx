@@ -78,12 +78,11 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
 
   if (!widget) return null;
 
-  const settings = normalizeWidgetSettings(widget.settings);
   const scriptSrc = getWidgetScriptSrc(
     typeof window !== "undefined" ? window.location.origin : undefined
   );
   const attrs = buildAttrs(widget);
-  const ttsEnabled = settings.features?.tts === true;
+  // TTS integration (disabled): const ttsEnabled = settings.features?.tts === true;
 
   const snippet = [
     "<script",
@@ -158,6 +157,7 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
             </p>
           </div>
 
+          {/* TTS integration (disabled):
           {ttsEnabled ? (
             <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
@@ -170,6 +170,7 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
               </p>
             </div>
           ) : null}
+          */}
 
           <Button className="w-full gap-2" onClick={handleCopy}>
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
