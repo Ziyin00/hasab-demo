@@ -18,6 +18,13 @@ import type {
 import {
   resolveQuickPromptsForLang,
 } from "@/features/chatbot-widgets/utils/quickPrompts";
+import {
+  normalizeUiLanguageCode,
+  resolveLanguageInstruction,
+  shouldRequestTts,
+  toSttLanguageCode,
+  isTtsLanguage,
+} from "@/features/chatbot-widgets/utils/languageCodes";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +33,9 @@ interface Message {
   content: string;
   isError?: boolean;
   isVoice?: boolean;
+  /** Assistant Tigist audio — only set when the visitor had Amharic selected at send time. */
+  playTts?: boolean;
+  replyLang?: string;
   audioUrl?: string;
   ts: Date;
 }
@@ -96,13 +106,9 @@ const LANG_OPTIONS: { value: Lang; native: string }[] = [
   { value: "om", native: "Afaan Oromoo" },
 ];
 
-// Normalises any code variant (amh/am, orm/om, eng/en) to the LANG_STRINGS key.
-// Widget settings.languages may use ISO 639-3 codes ("amh", "orm") while
-// LANG_STRINGS uses the short codes ("am", "om") — both must resolve correctly.
+// Widget settings.languages may use ISO 639-3 aliases ("amh", "orm"); normalize before use.
 function toLangKey(code: string): Lang {
-  if (code === "am" || code === "amh") return "am";
-  if (code === "om" || code === "orm") return "om";
-  return "en";
+  return normalizeUiLanguageCode(code);
 }
 
 // ─── Audio utilities (mirrors fayda-demo.html) ───────────────────────────────
@@ -226,12 +232,20 @@ function renderMarkdown(raw: string): string {
 
 // ─── Voice message player ─────────────────────────────────────────────────────
 
-function VoiceMessage({ audioUrl }: { audioUrl: string }) {
+function VoiceMessage({
+  audioUrl,
+  tone = "user",
+}: {
+  audioUrl: string;
+  /** User bubbles sit on saturated color (light controls); assistant on light surfaces. */
+  tone?: "user" | "assistant";
+}) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isUser = tone === "user";
 
   // Stable decorative waveform bars seeded from the URL
   const bars = useMemo(() => {
@@ -268,17 +282,21 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
   return (
     <div className="flex flex-col gap-1.5 min-w-[180px]">
       <div className="flex items-center gap-2">
-        {/* Play / Pause */}
         <button
+          type="button"
           onClick={togglePlay}
-          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/20 hover:bg-white/30 transition-colors"
+          className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+            isUser
+              ? "bg-white/20 hover:bg-white/30"
+              : "bg-black/8 hover:bg-black/12 dark:bg-white/15 dark:hover:bg-white/25"
+          )}
         >
           {playing
-            ? <Pause className="w-3.5 h-3.5 text-white" />
-            : <Play className="w-3.5 h-3.5 text-white translate-x-px" />}
+            ? <Pause className={cn("w-3.5 h-3.5", isUser ? "text-white" : "text-foreground")} />
+            : <Play className={cn("w-3.5 h-3.5 translate-x-px", isUser ? "text-white" : "text-foreground")} />}
         </button>
 
-        {/* Waveform bars */}
         <div className="flex items-center gap-px flex-1 h-7">
           {bars.map((h, i) => (
             <div
@@ -287,21 +305,42 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
               style={{
                 height: `${h * 100}%`,
                 background: i / bars.length <= progress
-                  ? "rgba(255,255,255,0.95)"
-                  : "rgba(255,255,255,0.35)",
+                  ? (isUser ? "rgba(255,255,255,0.95)" : "rgba(60,98,120,0.9)")
+                  : (isUser ? "rgba(255,255,255,0.35)" : "rgba(60,98,120,0.28)"),
               }}
             />
           ))}
         </div>
 
-        {/* Time */}
-        <span className="text-[11px] text-white/75 shrink-0 tabular-nums">
+        <span
+          className={cn(
+            "text-[11px] shrink-0 tabular-nums",
+            isUser ? "text-white/75" : "text-muted-foreground"
+          )}
+        >
           {fmt(playing || progress > 0 ? currentTime : duration)}
         </span>
       </div>
-
     </div>
   );
+}
+
+/** Soft-fail decode of TTS payload from chat responses (guide §3). */
+function audioUrlFromChatPayload(data: Record<string, unknown>): string | undefined {
+  const b64 = data.audio_base64;
+  if (typeof b64 !== "string" || !b64) return undefined;
+  const contentType =
+    typeof data.audio_content_type === "string" && data.audio_content_type.trim()
+      ? data.audio_content_type
+      : "audio/wav";
+  try {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+  } catch {
+    return undefined;
+  }
 }
 
 // ─── Session helpers (conversation lifecycle guide) ──────────────────────────
@@ -434,10 +473,10 @@ export function ChatWidget({
   // lang is a plain string (not the Lang union) because settings.languages can
   // list any code from the form; LANG_STRINGS only has full translations for
   // en/am/om today, so unknown codes fall back to the English strings below.
-  const [lang, setLang] = useState<string>(defaultLanguage ?? "en");
+  const [lang, setLang] = useState<string>(normalizeUiLanguageCode(defaultLanguage ?? "en"));
   useEffect(() => {
     const stored = localStorage.getItem("hasabChatLang");
-    if (stored) setLang(stored);
+    if (stored) setLang(normalizeUiLanguageCode(stored));
   }, []);
   const ui = LANG_STRINGS[toLangKey(lang)];
   const langKey = toLangKey(lang);
@@ -452,40 +491,45 @@ export function ChatWidget({
     langKey === "en"
       ? settings?.subtitle || ui.subtitle
       : ui.subtitle;
-  const languageOptions = settings?.languages?.length
-    ? settings.languages
-    : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
+  const languageOptions = useMemo(() => {
+    const raw = settings?.languages?.length
+      ? settings.languages
+      : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
 
-  // Push language preference as a server-side context (mirrors fayda-demo.html updateLanguageContext).
-  // Falls back to a generated instruction (using the form-configured label) for
-  // any language code from settings.languages that isn't one of the 3 fully
-  // translated ones below.
-  const updateLangContext = async (l: string) => {
-    const label = languageOptions.find((o) => o.code === l)?.label ?? l;
-    const instruction =
-      LANG_STRINGS[toLangKey(l)]?.contextInstruction ??
-      `CRITICAL: You MUST respond ONLY in ${label}. Do not use any other language.`;
+    const seen = new Set<string>();
+    return raw.reduce<{ code: string; label: string }[]>((acc, lang) => {
+      const code = normalizeUiLanguageCode(lang.code);
+      if (seen.has(code)) return acc;
+      seen.add(code);
+      acc.push({ code, label: lang.label });
+      return acc;
+    }, []);
+  }, [settings?.languages]);
+
+  // Widget sessions send language on every POST /chat — do not push a persistent
+  // account "Language Preference" context (that can stick on Amharic and override en).
+  const clearStaleLanguageContext = async () => {
     try {
       const r = await apiClient.get("/chat/context");
       const all: { id: number; name: string }[] = r.data?.contexts ?? r.data?.data ?? [];
       const existing = all.filter((c) => c.name === "Language Preference");
+      if (existing.length === 0) return;
       await Promise.all(existing.map((c) => apiClient.delete(`/chat/context/${c.id}`)));
-      if (existing.length > 0) await new Promise((res) => setTimeout(res, 300));
-      await apiClient.post("/chat/context", {
-        context_data: instruction,
-        name: "Language Preference",
-        priority: 100,
-        is_active: true,
-      });
     } catch {
-      // Silently fail — don't block the user
+      // Silently fail — per-request language_instruction still sent on each message
     }
   };
 
   const changeLang = (next: string) => {
-    setLang(next);
-    localStorage.setItem("hasabChatLang", next);
-    updateLangContext(next);
+    const normalized = normalizeUiLanguageCode(next);
+    if (normalized === lang) return;
+    setLang(normalized);
+    localStorage.setItem("hasabChatLang", normalized);
+    // New language → fresh conversation so replies follow the visitor's pick,
+    // not the admin default_language baked into an old chat_history_id.
+    setMessages([]);
+    clearHistoryId();
+    void clearStaleLanguageContext();
   };
 
   // Chat state
@@ -534,9 +578,9 @@ export function ChatWidget({
     };
   }, []);
 
-  // Push language context to server whenever the widget opens or language changes
+  // Clear stale account language context when the panel opens or language changes.
   useEffect(() => {
-    if (open) updateLangContext(lang);
+    if (open) void clearStaleLanguageContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, lang]);
 
@@ -553,17 +597,31 @@ export function ChatWidget({
     ]);
     setLoading(true);
 
+    await clearStaleLanguageContext();
+
     const visitorId = getVisitorSessionId();
     const chatHistoryId = getHistoryId();
+
+    const chatLang = normalizeUiLanguageCode(lang);
+    const langLabel = languageOptions.find((o) => o.code === chatLang)?.label;
+    const languageInstruction = resolveLanguageInstruction(chatLang, langLabel);
+    const requestTts = shouldRequestTts(settings?.features?.tts, chatLang);
 
     const buildBody = (newConversation: boolean) => ({
       message: trimmed,
       model: "hasab-1-lite",
       source: "widget",
       page_url: window.location.href,
-      language: lang,
+      language: chatLang,
+      language_instruction: languageInstruction,
+      tts: requestTts,
+      enable_tts: requestTts,
       visitor_session_id: visitorId,
-      client_metadata: buildClientMetadata(lang),
+      client_metadata: {
+        ...buildClientMetadata(chatLang),
+        language_instruction: languageInstruction,
+        tts: requestTts,
+      },
       ...(newConversation
         ? { new_conversation: true }
         : { chat_history_id: chatHistoryId }),
@@ -571,19 +629,25 @@ export function ChatWidget({
 
     const applyResponse = (r: { data: Record<string, unknown> }) => {
       if (r.data?.chat_history_id) saveHistoryId(r.data.chat_history_id as number);
-      return (
+      const content =
         (r.data?.message as { content?: string })?.content ??
         (r.data?.data as { message?: string })?.message ??
-        "No response received."
-      );
+        "No response received.";
+      const audioUrl = requestTts
+        ? audioUrlFromChatPayload(r.data ?? {})
+        : undefined;
+      return { content, audioUrl };
     };
 
     try {
       const r = await apiClient.post("/chat", buildBody(!chatHistoryId), {
         headers: { "X-Visitor-Session-Id": visitorId },
       });
-      const content = applyResponse(r);
-      setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+      const { content, audioUrl } = applyResponse(r);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content, audioUrl, playTts: requestTts, replyLang: chatLang, ts: new Date() },
+      ]);
     } catch (err: unknown) {
       const status = (err as { response?: { status: number } })?.response?.status;
       // Stale chat_history_id — clear and retry as new conversation (guide §11)
@@ -593,8 +657,11 @@ export function ChatWidget({
           const r2 = await apiClient.post("/chat", buildBody(true), {
             headers: { "X-Visitor-Session-Id": visitorId },
           });
-          const content = applyResponse(r2);
-          setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+          const { content, audioUrl } = applyResponse(r2);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content, audioUrl, playTts: requestTts, replyLang: chatLang, ts: new Date() },
+          ]);
           return;
         } catch { /* fall through to error message */ }
       }
@@ -638,8 +705,8 @@ export function ChatWidget({
     form.append("translate", "false");
     form.append("summarize", "false");
     form.append("is_meeting", "false");
-    form.append("language", ui.sttLang);
-    form.append("source_language", ui.sttLang);
+    form.append("language", toSttLanguageCode(lang));
+    form.append("source_language", toSttLanguageCode(lang));
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -986,7 +1053,7 @@ export function ChatWidget({
                     >
                       {msg.isVoice && msg.audioUrl ? (
                         <div className="space-y-1.5">
-                          <VoiceMessage audioUrl={msg.audioUrl} />
+                          <VoiceMessage audioUrl={msg.audioUrl} tone="user" />
                           {msg.content && (
                             <p className="text-[11px] text-white leading-snug opacity-80 pt-0.5">
                               {msg.content}
@@ -994,7 +1061,12 @@ export function ChatWidget({
                           )}
                         </div>
                       ) : msg.role === "assistant" && !msg.isError ? (
-                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                        <div className="space-y-1.5">
+                          {msg.playTts && msg.audioUrl && isTtsLanguage(msg.replyLang ?? lang) ? (
+                            <VoiceMessage audioUrl={msg.audioUrl} tone="assistant" />
+                          ) : null}
+                          <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                        </div>
                       ) : (
                         msg.content
                       )}

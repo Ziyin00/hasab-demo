@@ -4,6 +4,37 @@ import type {
   QuickPromptsConfig,
   QuickPromptsMultilingual,
 } from "../types/chatbot-widget.types";
+import { normalizeUiLanguageCode } from "./languageCodes";
+
+/**
+ * Remap quick_prompts keys from legacy STT aliases (amh/orm/eng) to UI codes (am/om/en).
+ * Alias keys fill in only when the canonical key is missing; canonical keys win.
+ */
+export function normalizeQuickPromptKeys(
+  quickPrompts: QuickPromptsConfig | undefined | null
+): QuickPromptsConfig | undefined {
+  if (!quickPrompts || Array.isArray(quickPrompts)) return quickPrompts ?? undefined;
+
+  const next: QuickPromptsMultilingual = {};
+
+  for (const [key, list] of Object.entries(quickPrompts)) {
+    if (!Array.isArray(list)) continue;
+    const normalized = normalizeUiLanguageCode(key);
+    if (!next[normalized]?.length) {
+      next[normalized] = list.map((p) => ({ ...p }));
+    }
+  }
+
+  for (const [key, list] of Object.entries(quickPrompts)) {
+    if (!Array.isArray(list)) continue;
+    const normalized = normalizeUiLanguageCode(key);
+    if (key === normalized) {
+      next[normalized] = list.map((p) => ({ ...p }));
+    }
+  }
+
+  return next;
+}
 
 /** Aliases the CDN also understands — try exact key first, then these. */
 const LANG_ALIASES: Record<string, string[]> = {

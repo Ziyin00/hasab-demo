@@ -143,6 +143,19 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
           </div>
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
             <div>
+              <p className="text-sm font-medium">Enable TTS replies</p>
+              <p className="text-xs text-muted-foreground">
+                Text replies follow the visitor&apos;s language. Amharic voice (Tigist) is added
+                only when they select Amharic — English and Oromo are text-only.
+              </p>
+            </div>
+            <Switch
+              checked={settings.features?.tts ?? false}
+              onCheckedChange={(v) => setFeature("tts", v)}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
+            <div>
               <p className="text-sm font-medium">Quick Prompts</p>
               <p className="text-xs text-muted-foreground">
                 Show prompt chip shortcuts to visitors

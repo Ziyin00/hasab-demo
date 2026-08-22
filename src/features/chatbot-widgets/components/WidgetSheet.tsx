@@ -39,6 +39,8 @@ import {
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
 import { normalizeQuickPrompts } from "../utils/quickPrompts";
+import { normalizeWidgetSettings } from "../utils/normalizeSettings";
+import { normalizeUiLanguageCode } from "../utils/languageCodes";
 
 const POSITIONS: { label: string; value: WidgetPosition }[] = [
   { label: "Bottom Right", value: "bottom-right" },
@@ -101,11 +103,12 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
   languages: [
     { code: "en", label: "English" },
     { code: "am", label: "Amharic" },
-    { code: "orm", label: "Oromo" },
+    { code: "om", label: "Oromo" },
   ],
   quick_prompts: {},
   features: {
     audio_upload: false,
+    tts: false,
     quick_prompts: true,
     language_selector: true,
   },
@@ -151,13 +154,13 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
         const payload = rest as CreateChatbotWidgetPayload;
         setForm({
           ...payload,
-          settings: {
+          settings: normalizeWidgetSettings({
             ...payload.settings,
             quick_prompts: normalizeQuickPrompts(
               payload.settings?.quick_prompts,
               payload.settings?.languages
             ),
-          },
+          }),
         });
         setContextIdsRaw(widget.chat_context_ids.join(", "));
         setRagIdsRaw(widget.rag_store_ids.join(", "));
@@ -183,15 +186,16 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   const handleSave = () => {
     const payload: CreateChatbotWidgetPayload = {
       ...form,
+      default_language: normalizeUiLanguageCode(form.default_language),
       chat_context_ids: parseIds(contextIdsRaw),
       rag_store_ids: parseIds(ragIdsRaw),
-      settings: {
+      settings: normalizeWidgetSettings({
         ...form.settings,
         quick_prompts: normalizeQuickPrompts(
           form.settings?.quick_prompts,
           form.settings?.languages
         ),
-      },
+      }),
     };
 
     if (!payload.name.trim()) return;
@@ -402,11 +406,11 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
               <ChatWidget
                 embedded
                 theme={form.theme}
-                settings={form.settings}
+                settings={normalizeWidgetSettings(form.settings)}
                 position={form.position}
                 welcomeMessage={form.welcome_message}
                 botNameOverride={form.settings.title || form.name || "Preview"}
-                defaultLanguage={form.default_language}
+                defaultLanguage={normalizeUiLanguageCode(form.default_language ?? "en")}
               />
             </div>
           </div>

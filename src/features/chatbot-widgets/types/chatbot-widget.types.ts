@@ -73,6 +73,8 @@ export type QuickPromptsConfig = QuickPromptsLegacy | QuickPromptsMultilingual;
 
 export interface WidgetFeatures {
   audio_upload?: boolean;
+  /** Synthesize assistant replies (Tigist / Amharic). Independent of mic/ASR. */
+  tts?: boolean;
   quick_prompts?: boolean;
   language_selector?: boolean;
 }

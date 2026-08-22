@@ -4,6 +4,14 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type {
   LanguageOption,
@@ -28,6 +36,7 @@ export function QuickPromptsEditor({
   const [activeLang, setActiveLang] = useState(tabs[0]?.code ?? "en");
   const [draftLabel, setDraftLabel] = useState("");
   const [draftPrompt, setDraftPrompt] = useState("");
+  const [pendingRemoveIndex, setPendingRemoveIndex] = useState<number | null>(null);
 
   // If active tab was removed, snap to first available
   const safeLang = tabs.some((t) => t.code === activeLang)
@@ -35,6 +44,8 @@ export function QuickPromptsEditor({
     : tabs[0]?.code ?? "en";
 
   const activePrompts: QuickPrompt[] = promptsByLang[safeLang] ?? [];
+  const pendingPrompt =
+    pendingRemoveIndex != null ? activePrompts[pendingRemoveIndex] : null;
 
   const setLangPrompts = (code: string, list: QuickPrompt[]) => {
     onChange({ ...promptsByLang, [code]: list });
@@ -57,11 +68,13 @@ export function QuickPromptsEditor({
     );
   };
 
-  const removePrompt = (index: number) => {
+  const confirmRemovePrompt = () => {
+    if (pendingRemoveIndex == null) return;
     setLangPrompts(
       safeLang,
-      activePrompts.filter((_, i) => i !== index)
+      activePrompts.filter((_, i) => i !== pendingRemoveIndex)
     );
+    setPendingRemoveIndex(null);
   };
 
   return (
@@ -137,7 +150,7 @@ export function QuickPromptsEditor({
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => removePrompt(i)}
+                    onClick={() => setPendingRemoveIndex(i)}
                     aria-label="Remove prompt"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -160,8 +173,8 @@ export function QuickPromptsEditor({
             <Input
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
-              placeholder="Chip label (e.g. Pricing)"
-              className="text-sm flex-1"
+              placeholder="New chip label"
+              className="h-8 text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -169,7 +182,13 @@ export function QuickPromptsEditor({
                 }
               }}
             />
-            <Button type="button" size="sm" onClick={addPrompt} className="shrink-0 gap-1">
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 shrink-0 gap-1"
+              onClick={addPrompt}
+              disabled={!draftLabel.trim() || !draftPrompt.trim()}
+            >
               <Plus className="h-3.5 w-3.5" />
               Add
             </Button>
@@ -178,7 +197,7 @@ export function QuickPromptsEditor({
             value={draftPrompt}
             onChange={(e) => setDraftPrompt(e.target.value)}
             placeholder="Full prompt text sent to the bot"
-            className="text-sm"
+            className="h-8 text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -188,6 +207,38 @@ export function QuickPromptsEditor({
           />
         </div>
       </div>
+
+      <Dialog
+        open={pendingRemoveIndex != null}
+        onOpenChange={(open) => !open && setPendingRemoveIndex(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove this prompt?</DialogTitle>
+            <DialogDescription>
+              {pendingPrompt?.label ? (
+                <>
+                  Remove chip{" "}
+                  <span className="font-medium text-foreground">
+                    &ldquo;{pendingPrompt.label}&rdquo;
+                  </span>{" "}
+                  from this language. Changes apply after you save.
+                </>
+              ) : (
+                "This prompt chip will be removed. Changes apply after you save."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingRemoveIndex(null)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmRemovePrompt}>
+              Remove prompt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

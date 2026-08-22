@@ -6,9 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useServerInsertedHTML } from "next/navigation";
+import { THEME_INIT_SCRIPT } from "@/components/theme-script";
 
 type Theme = "dark" | "light" | "system";
 
@@ -71,7 +74,10 @@ function applyThemeClass(
   restore?.();
 }
 
-/** Blocking FOUC script lives in `theme-script.ts` and is rendered once from root layout. */
+/**
+ * Injects the FOUC theme script via useServerInsertedHTML so it lands in the
+ * SSR HTML stream outside the React client tree (avoids React 19 script warning).
+ */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -82,6 +88,18 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [systemTheme, setSystemTheme] = useState<"dark" | "light">("light");
   const [mounted, setMounted] = useState(false);
+  const themeScriptInserted = useRef(false);
+
+  useServerInsertedHTML(() => {
+    if (themeScriptInserted.current) return null;
+    themeScriptInserted.current = true;
+    return (
+      <script
+        id="theme-init"
+        dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+      />
+    );
+  });
 
   useEffect(() => {
     const stored = (localStorage.getItem(storageKey) as Theme | null) ?? defaultTheme;

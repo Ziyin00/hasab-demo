@@ -105,6 +105,12 @@ export function WidgetCard({ widget, onSnippet }: WidgetCardProps) {
             <span className="rounded bg-muted/50 px-1.5 py-0.5">
               {widget.rate_limit_per_minute} req/min
             </span>
+            {widget.settings?.features?.audio_upload ? (
+              <span className="rounded bg-muted/50 px-1.5 py-0.5">Mic</span>
+            ) : null}
+            {widget.settings?.features?.tts ? (
+              <span className="rounded bg-muted/50 px-1.5 py-0.5">TTS</span>
+            ) : null}
           </div>
         </div>
 

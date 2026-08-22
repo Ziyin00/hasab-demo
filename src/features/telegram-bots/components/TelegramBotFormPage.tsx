@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
+  ChevronDown,
   ExternalLink,
   Loader2,
   RefreshCw,
   Save,
   Send,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,8 +26,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHasabApiKey } from "@/features/api-key/hooks/useHasabApiKey";
+import { useContexts } from "@/features/context/hooks/useContexts";
 import { useChatbotWidgets } from "@/features/chatbot-widgets/hooks/useChatbotWidgets";
 import {
   useCreateTelegramBot,
@@ -68,7 +81,7 @@ interface FormState {
   mode: TelegramBotMode;
   welcome_message: string;
   default_language: string;
-  chat_context_ids_raw: string;
+  chat_context_ids: number[];
   rag_store_ids_raw: string;
   rate_limit_per_minute: number;
   is_active: boolean;
@@ -86,7 +99,7 @@ function emptyForm(): FormState {
     mode: "hybrid",
     welcome_message: "Hi! Ask me anything.",
     default_language: "en",
-    chat_context_ids_raw: "",
+    chat_context_ids: [],
     rag_store_ids_raw: "",
     rate_limit_per_minute: 45,
     is_active: true,
@@ -137,6 +150,137 @@ function FieldLabel({
       {children}
       {required ? <span className="text-destructive"> *</span> : null}
     </Label>
+  );
+}
+
+function ChatContextIdsField({
+  value,
+  onChange,
+}: {
+  value: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const { apiKey, isLoading: keyLoading } = useHasabApiKey();
+  const { data: contexts, isLoading: contextsLoading } = useContexts(apiKey);
+  const loading = keyLoading || contextsLoading;
+
+  const byId = new Map((contexts ?? []).map((c) => [c.id, c]));
+  const selected = new Set(value);
+
+  const toggle = (id: number) => {
+    if (selected.has(id)) {
+      onChange(value.filter((x) => x !== id));
+    } else {
+      onChange([...value, id]);
+    }
+  };
+
+  const label =
+    value.length === 0
+      ? "Account defaults"
+      : value.length === 1
+        ? byId.get(value[0])?.name ?? `Context #${value[0]}`
+        : `${value.length} contexts selected`;
+
+  return (
+    <div className="space-y-1.5">
+      <FieldLabel>Chat contexts</FieldLabel>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full justify-between font-normal"
+            disabled={loading}
+          >
+            <span className="truncate text-left">
+              {loading ? "Loading contexts…" : label}
+            </span>
+            {loading ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-50" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width) max-h-72 overflow-y-auto">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            Leave empty to use account defaults
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {(contexts ?? []).length === 0 && !loading ? (
+            <p className="px-2 py-3 text-xs text-muted-foreground">
+              No contexts found. Create some under Contexts first.
+            </p>
+          ) : (
+            (contexts ?? []).map((ctx) => (
+              <DropdownMenuCheckboxItem
+                key={ctx.id}
+                checked={selected.has(ctx.id)}
+                onCheckedChange={() => toggle(ctx.id)}
+                onSelect={(e) => e.preventDefault()}
+                className="gap-2"
+              >
+                <span className="min-w-0 flex-1 truncate">{ctx.name}</span>
+                {!ctx.is_active ? (
+                  <span className="text-[10px] text-muted-foreground">inactive</span>
+                ) : null}
+              </DropdownMenuCheckboxItem>
+            ))
+          )}
+          {/* Keep selected IDs that are no longer in the list visible */}
+          {value
+            .filter((id) => !byId.has(id))
+            .map((id) => (
+              <DropdownMenuCheckboxItem
+                key={`missing-${id}`}
+                checked
+                onCheckedChange={() => toggle(id)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Context #{id}
+                <span className="ml-2 text-[10px] text-muted-foreground">missing</span>
+              </DropdownMenuCheckboxItem>
+            ))}
+          {value.length > 0 ? (
+            <>
+              <DropdownMenuSeparator />
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={() => onChange([])}
+              >
+                Clear selection
+              </button>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {value.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {value.map((id) => (
+            <Badge key={id} variant="secondary" className="gap-1 pr-1">
+              <span className="max-w-40 truncate">
+                {byId.get(id)?.name ?? `#${id}`}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${byId.get(id)?.name ?? id}`}
+                className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                onClick={() => toggle(id)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Select contexts to inject for this bot, or leave empty for account defaults.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -310,7 +454,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       mode: bot.mode ?? "hybrid",
       welcome_message: bot.welcome_message ?? "",
       default_language: bot.default_language ?? "en",
-      chat_context_ids_raw: (bot.chat_context_ids ?? []).join(", "),
+      chat_context_ids: bot.chat_context_ids ?? [],
       rag_store_ids_raw: (bot.rag_store_ids ?? []).join(", "),
       rate_limit_per_minute: bot.rate_limit_per_minute ?? 45,
       is_active: bot.is_active,
@@ -372,7 +516,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       welcome_message: form.welcome_message || null,
       about: form.about || null,
       default_language: form.default_language,
-      chat_context_ids: parseIds(form.chat_context_ids_raw),
+      chat_context_ids: form.chat_context_ids,
       rag_store_ids: parseIds(form.rag_store_ids_raw),
       settings: {
         commands: form.settings.commands,
@@ -406,7 +550,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
       mode: form.mode,
       welcome_message: form.welcome_message || null,
       default_language: form.default_language,
-      chat_context_ids: parseIds(form.chat_context_ids_raw),
+      chat_context_ids: form.chat_context_ids,
       rag_store_ids: parseIds(form.rag_store_ids_raw),
       settings: {
         commands: form.settings.commands,
@@ -675,18 +819,10 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel>Chat context IDs</FieldLabel>
-                <Input
-                  value={form.chat_context_ids_raw}
-                  onChange={(e) => set("chat_context_ids_raw", e.target.value)}
-                  placeholder="12, 13"
-                  className="font-mono text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs. Leave empty to use account defaults.
-                </p>
-              </div>
+              <ChatContextIdsField
+                value={form.chat_context_ids}
+                onChange={(ids) => set("chat_context_ids", ids)}
+              />
 
               <div className="space-y-1.5">
                 <FieldLabel>RAG store IDs</FieldLabel>
@@ -858,18 +994,10 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
 
             {/* Contexts */}
             <TabsContent value="contexts" className="mt-0 space-y-5 px-6 py-6">
-              <div className="space-y-1.5">
-                <FieldLabel>Chat context IDs</FieldLabel>
-                <Input
-                  value={form.chat_context_ids_raw}
-                  onChange={(e) => set("chat_context_ids_raw", e.target.value)}
-                  placeholder="12, 13"
-                  className="font-mono text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs. Leave empty to use account defaults.
-                </p>
-              </div>
+              <ChatContextIdsField
+                value={form.chat_context_ids}
+                onChange={(ids) => set("chat_context_ids", ids)}
+              />
               <div className="space-y-1.5">
                 <FieldLabel>RAG store IDs</FieldLabel>
                 <Input
