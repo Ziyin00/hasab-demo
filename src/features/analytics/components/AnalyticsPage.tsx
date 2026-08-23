@@ -124,11 +124,6 @@ export function AnalyticsPage() {
     [data?.by_device]
   );
 
-  const healthNeedsAttention =
-    (data?.widget_status?.classification_backlog ?? 0) > 0 ||
-    (data?.classification_coverage?.percent ?? 1) < 0.5 ||
-    (data?.widget_status?.uncategorized_share_last_7d ?? 0) > 0.4;
-
   const classified = data?.classification_coverage?.classified ?? 0;
   const totalConversations = summary?.total_conversations ?? 0;
 
@@ -155,12 +150,7 @@ export function AnalyticsPage() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <span className="inline-flex items-center gap-1.5">
-                {item.label}
-                {item.id === "health" && healthNeedsAttention && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                )}
-              </span>
+              {item.label}
               {tab === item.id && (
                 <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
               )}

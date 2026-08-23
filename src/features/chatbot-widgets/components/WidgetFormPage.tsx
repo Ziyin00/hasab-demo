@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +15,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHasabApiKey } from "@/features/api-key/hooks/useHasabApiKey";
+import { useContexts } from "@/features/context/hooks/useContexts";
 import { AllowedOriginsEditor } from "./AllowedOriginsEditor";
 import { ThemeEditor } from "./ThemeEditor";
 import { SettingsEditor } from "./SettingsEditor";
@@ -47,6 +58,12 @@ const POSITIONS: { label: string; value: WidgetPosition }[] = [
   { label: "Top Left", value: "top-left" },
 ];
 
+const LANGS = [
+  { value: "en", label: "English" },
+  { value: "am", label: "Amharic" },
+  { value: "om", label: "Oromo" },
+];
+
 const DEFAULT_THEME: ChatbotWidgetTheme = {
   primary_color: "#0f766e",
   panel_background: "#ffffff",
@@ -64,13 +81,24 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
   panel_width: "400px",
   panel_height: "580px",
   launcher_size: "64px",
-  launcher: { type: "icon", label: "", icon_url: null, background_color: "#0f766e", text_color: "#ffffff" },
+  launcher: {
+    type: "icon",
+    label: "",
+    icon_url: null,
+    background_color: "#0f766e",
+    text_color: "#ffffff",
+  },
   header: { avatar_url: null, avatar_initials: "AF" },
   mic: {
-    label: "", recording_label: "Stop", processing_label: "Wait",
-    icon_url: null, recording_icon_url: null,
-    background_color: "#475569", recording_background_color: "#dc2626",
-    processing_background_color: "#d97706", text_color: "#ffffff",
+    label: "",
+    recording_label: "Stop",
+    processing_label: "Wait",
+    icon_url: null,
+    recording_icon_url: null,
+    background_color: "#475569",
+    recording_background_color: "#dc2626",
+    processing_background_color: "#d97706",
+    text_color: "#ffffff",
   },
   send: { label: "Send", icon_url: null },
 };
@@ -87,23 +115,248 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
     { code: "om", label: "Oromo" },
   ],
   quick_prompts: {},
-  features: { audio_upload: false, tts: false, quick_prompts: true, language_selector: true },
+  features: {
+    audio_upload: false,
+    tts: false,
+    quick_prompts: true,
+    language_selector: true,
+  },
 };
 
-function emptyForm(): CreateChatbotWidgetPayload {
+interface FormState extends CreateChatbotWidgetPayload {
+  rag_store_ids_raw: string;
+}
+
+function emptyForm(): FormState {
   return {
     name: "",
     allowed_origins: [],
     welcome_message: "Hi, how can I help?",
     default_language: "en",
     position: "bottom-right",
-    theme: { ...DEFAULT_THEME },
-    settings: { ...DEFAULT_SETTINGS },
+    theme: { ...DEFAULT_THEME, launcher: { ...DEFAULT_THEME.launcher }, header: { ...DEFAULT_THEME.header }, mic: { ...DEFAULT_THEME.mic }, send: { ...DEFAULT_THEME.send } },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      languages: DEFAULT_SETTINGS.languages?.map((l) => ({ ...l })),
+      features: { ...DEFAULT_SETTINGS.features },
+      quick_prompts: {},
+    },
     chat_context_ids: [],
     rag_store_ids: [],
+    rag_store_ids_raw: "",
     rate_limit_per_minute: 60,
     is_active: true,
   };
+}
+
+function parseIds(raw: string): number[] {
+  return raw
+    .split(/[,\s]+/)
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !Number.isNaN(n));
+}
+
+function FieldLabel({
+  children,
+  required,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+      {required ? <span className="text-destructive"> *</span> : null}
+    </Label>
+  );
+}
+
+function LanguageSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {LANGS.map((lang) => (
+          <SelectItem key={lang.value} value={lang.value}>
+            {lang.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ActiveToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Active
+      </span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function ChatContextIdsField({
+  value,
+  onChange,
+}: {
+  value: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const { apiKey, isLoading: keyLoading } = useHasabApiKey();
+  const { data: contexts, isLoading: contextsLoading } = useContexts(apiKey);
+  const loading = keyLoading || contextsLoading;
+
+  const byId = new Map((contexts ?? []).map((c) => [c.id, c]));
+  const selected = new Set(value);
+
+  const toggle = (id: number) => {
+    if (selected.has(id)) {
+      onChange(value.filter((x) => x !== id));
+    } else {
+      onChange([...value, id]);
+    }
+  };
+
+  const label =
+    value.length === 0
+      ? "Account defaults"
+      : value.length === 1
+        ? byId.get(value[0])?.name ?? `Context #${value[0]}`
+        : `${value.length} contexts selected`;
+
+  return (
+    <div className="space-y-1.5">
+      <FieldLabel>Chat contexts</FieldLabel>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full justify-between font-normal"
+            disabled={loading}
+          >
+            <span className="truncate text-left">
+              {loading ? "Loading contexts…" : label}
+            </span>
+            {loading ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-50" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="w-(--radix-dropdown-menu-trigger-width) max-h-72 overflow-y-auto"
+        >
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            Leave empty to use account defaults
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {(contexts ?? []).length === 0 && !loading ? (
+            <p className="px-2 py-3 text-xs text-muted-foreground">
+              No contexts found. Create some under Contexts first.
+            </p>
+          ) : (
+            (contexts ?? []).map((ctx) => (
+              <DropdownMenuCheckboxItem
+                key={ctx.id}
+                checked={selected.has(ctx.id)}
+                onCheckedChange={() => toggle(ctx.id)}
+                onSelect={(e) => e.preventDefault()}
+                className="gap-2"
+              >
+                <span className="min-w-0 flex-1 truncate">{ctx.name}</span>
+                {!ctx.is_active ? (
+                  <span className="text-[10px] text-muted-foreground">inactive</span>
+                ) : null}
+              </DropdownMenuCheckboxItem>
+            ))
+          )}
+          {value
+            .filter((id) => !byId.has(id))
+            .map((id) => (
+              <DropdownMenuCheckboxItem
+                key={`missing-${id}`}
+                checked
+                onCheckedChange={() => toggle(id)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Context #{id}
+                <span className="ml-2 text-[10px] text-muted-foreground">missing</span>
+              </DropdownMenuCheckboxItem>
+            ))}
+          {(contexts ?? []).length > 0 ? (
+            <>
+              <DropdownMenuSeparator />
+              <div className="flex items-center gap-1 px-1 py-0.5">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  disabled={(contexts ?? []).every((c) => selected.has(c.id))}
+                  onClick={() =>
+                    onChange([
+                      ...new Set([...(contexts ?? []).map((c) => c.id), ...value]),
+                    ])
+                  }
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  disabled={value.length === 0}
+                  onClick={() => onChange([])}
+                >
+                  Clear selection
+                </button>
+              </div>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {value.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {value.map((id) => (
+            <Badge key={id} variant="secondary" className="gap-1 pr-1">
+              <span className="max-w-40 truncate">
+                {byId.get(id)?.name ?? `#${id}`}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${byId.get(id)?.name ?? id}`}
+                className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                onClick={() => toggle(id)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Select contexts to inject for this widget, or leave empty for account defaults.
+        </p>
+      )}
+    </div>
+  );
 }
 
 interface WidgetFormPageProps {
@@ -119,17 +372,15 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
   const { mutate: update, isPending: updating } = useUpdateChatbotWidget();
   const isPending = creating || updating;
 
-  const [form, setForm] = useState<CreateChatbotWidgetPayload>(emptyForm);
-  const [contextIdsRaw, setContextIdsRaw] = useState("");
-  const [ragIdsRaw, setRagIdsRaw] = useState("");
+  const [form, setForm] = useState<FormState>(emptyForm);
 
-  // Hydrate only when the widget id changes — refetching the same widget must not
-  // wipe in-progress Theme / Settings edits.
   const widgetId = widget?.id;
   useEffect(() => {
     if (!widget) return;
     const { id, widget_id, snippet, ...rest } = widget;
-    void id; void widget_id; void snippet;
+    void id;
+    void widget_id;
+    void snippet;
     const payload = rest as CreateChatbotWidgetPayload;
     setForm({
       ...payload,
@@ -141,26 +392,29 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
           payload.settings?.languages
         ),
       }),
+      chat_context_ids: widget.chat_context_ids ?? [],
+      rag_store_ids_raw: (widget.rag_store_ids ?? []).join(", "),
     });
-    setContextIdsRaw(widget.chat_context_ids.join(", "));
-    setRagIdsRaw(widget.rag_store_ids.join(", "));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: hydrate by id only
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate by id only
   }, [widgetId]);
 
-  const set = <K extends keyof CreateChatbotWidgetPayload>(
-    key: K,
-    val: CreateChatbotWidgetPayload[K]
-  ) => setForm((prev) => ({ ...prev, [key]: val }));
-
-  const parseIds = (raw: string): number[] =>
-    raw.split(/[,\s]+/).map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+  const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: val }));
 
   const handleSave = () => {
+    if (!form.name.trim()) return;
+
     const payload: CreateChatbotWidgetPayload = {
-      ...form,
+      name: form.name.trim(),
+      allowed_origins: form.allowed_origins,
+      welcome_message: form.welcome_message,
       default_language: normalizeUiLanguageCode(form.default_language),
-      chat_context_ids: parseIds(contextIdsRaw),
-      rag_store_ids: parseIds(ragIdsRaw),
+      position: form.position,
+      theme: form.theme,
+      chat_context_ids: form.chat_context_ids,
+      rag_store_ids: parseIds(form.rag_store_ids_raw),
+      rate_limit_per_minute: form.rate_limit_per_minute,
+      is_active: form.is_active,
       settings: normalizeWidgetSettings(
         syncLauncherLabelFromTheme(
           {
@@ -174,217 +428,376 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
         )
       ),
     };
-    if (!payload.name.trim()) return;
 
     if (isEdit && widget) {
-      update({ id: widget.id, payload }, { onSuccess: () => router.push("/dashboard/widgets") });
+      update(
+        { id: widget.id, payload },
+        { onSuccess: () => router.push("/dashboard/widgets") }
+      );
     } else {
       create(payload, { onSuccess: () => router.push("/dashboard/widgets") });
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <Button
         variant="ghost"
         size="sm"
-        className=" -ml-1 -mt-16 shrink-0"
-        onClick={() => router.back()}
+        className="-ml-1 -mt-16 shrink-0"
+        onClick={() => router.push("/dashboard/widgets")}
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </Button>
-      <div className="flex items-center -mt-4 justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div>
-            {loading ? (
-              <Skeleton className="h-5 w-48" />
-            ) : (
-              <h1 className="text-lg font-semibold">
-                {isEdit ? `Edit: ${widget!.name}` : "New Widget"}
-              </h1>
-            )}
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {isEdit
-                ? "Update widget configuration. Changes apply immediately after saving."
-                : "Configure your chatbot widget. You'll get an embed snippet to paste on any site."}
-            </p>
-          </div>
+
+      <div className="-mt-4 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold">
+            {isEdit ? `Edit: ${widget!.name}` : "New Widget"}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {isEdit
+              ? "Update origins, theme, settings, categories, and knowledge contexts."
+              : "Configure your chatbot widget. You'll get an embed snippet after create."}
+          </p>
+          {isEdit && widget?.widget_id && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                {widget.widget_id}
+              </code>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" onClick={() => router.back()} disabled={isPending}>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard/widgets")}
+            disabled={isPending}
+          >
             Cancel
           </Button>
           <Button
-            onClick={handleSave}
-            disabled={isPending || !form.name.trim() || loading}
             className="gap-2"
+            disabled={isPending || !form.name.trim()}
+            onClick={handleSave}
           >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isPending ? "Saving…" : "Save Widget"}
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isPending ? "Saving…" : isEdit ? "Save Widget" : "Create Widget"}
           </Button>
         </div>
       </div>
 
-      {/* Form tabs */}
-      {loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-64 w-full rounded-xl" />
-        </div>
-      ) : (
+      {!isEdit ? (
         <div className="rounded-xl border bg-card">
           <Tabs defaultValue="general">
-            <TabsList className="w-full justify-start rounded-t-xl rounded-b-none border-b h-11 px-4 gap-1 bg-transparent">
-              <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
-              <TabsTrigger value="origins" className="text-xs">Origins</TabsTrigger>
-              <TabsTrigger value="theme" className="text-xs">Theme</TabsTrigger>
-              <TabsTrigger value="settings" className="text-xs">Settings</TabsTrigger>
-              {isEdit && <TabsTrigger value="categories" className="text-xs">Categories</TabsTrigger>}
-              <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
+            <TabsList className="h-11 w-full justify-start gap-1 rounded-t-xl rounded-b-none border-b bg-transparent px-4">
+              <TabsTrigger value="general" className="text-xs">
+                General
+              </TabsTrigger>
+              <TabsTrigger value="origins" className="text-xs">
+                Origins
+              </TabsTrigger>
+              <TabsTrigger value="theme" className="text-xs">
+                Theme
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="text-xs">
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="text-xs">
+                Advanced
+              </TabsTrigger>
             </TabsList>
 
-            {/* General */}
-            <TabsContent value="general" className="px-6 py-6 space-y-5 mt-0">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Widget Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="Customer website support"
-                  className="text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground">Internal name — shown in the portal only.</p>
+            <TabsContent value="general" className="mt-0 space-y-5 px-6 py-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 max-w-sm flex-1 space-y-1.5">
+                  <FieldLabel required>Widget name</FieldLabel>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder="Customer website support"
+                    className="text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Internal name — shown in the portal only.
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 pt-5">
+                  <ActiveToggle
+                    checked={form.is_active}
+                    onChange={(v) => set("is_active", v)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Welcome Message
-                </Label>
+                <FieldLabel>Welcome message</FieldLabel>
                 <Textarea
                   value={form.welcome_message}
                   onChange={(e) => set("welcome_message", e.target.value)}
-                  placeholder="Hi, how can I help?"
-                  className="text-sm resize-none"
                   rows={3}
+                  className="resize-none text-sm"
+                  placeholder="Hi, how can I help?"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Shown when a visitor opens the chat for the first time.
+                </p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Position
-                  </Label>
-                  <Select value={form.position} onValueChange={(v) => set("position", v as WidgetPosition)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <FieldLabel>Position</FieldLabel>
+                  <Select
+                    value={form.position}
+                    onValueChange={(v) => set("position", v as WidgetPosition)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {POSITIONS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Default Language
-                  </Label>
-                  <Input
-                    value={form.default_language}
-                    onChange={(e) => set("default_language", e.target.value)}
-                    placeholder="en"
-                    className="text-sm"
+                  <FieldLabel>Default language</FieldLabel>
+                  <LanguageSelect
+                    value={normalizeUiLanguageCode(form.default_language)}
+                    onChange={(v) => set("default_language", v)}
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Rate Limit (req/min)
-                  </Label>
-                  <Input
-                    type="number"
-                    value={form.rate_limit_per_minute}
-                    onChange={(e) => set("rate_limit_per_minute", Number(e.target.value))}
-                    min={1}
-                    max={300}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">Active</p>
-                  <p className="text-xs text-muted-foreground">Inactive widgets return 404 to the browser script.</p>
-                </div>
-                <Switch checked={form.is_active} onCheckedChange={(v) => set("is_active", v)} />
               </div>
             </TabsContent>
 
-            {/* Origins */}
-            <TabsContent value="origins" className="px-6 py-6 mt-0">
+            <TabsContent value="origins" className="mt-0 px-6 py-6">
               <AllowedOriginsEditor
                 origins={form.allowed_origins}
                 onChange={(origins) => set("allowed_origins", origins)}
               />
             </TabsContent>
 
-            {/* Theme */}
-            <TabsContent value="theme" className="px-6 py-6 mt-0">
-              <ThemeEditor theme={form.theme} onChange={(theme) => set("theme", theme)} />
+            <TabsContent value="theme" className="mt-0 px-6 py-6">
+              <ThemeEditor
+                theme={form.theme}
+                onChange={(theme) => set("theme", theme)}
+              />
             </TabsContent>
 
-            {/* Settings */}
-            <TabsContent value="settings" className="px-6 py-6 mt-0">
-              <SettingsEditor settings={form.settings} onChange={(settings) => set("settings", settings)} />
+            <TabsContent value="settings" className="mt-0 px-6 py-6">
+              <SettingsEditor
+                settings={form.settings}
+                onChange={(settings) => set("settings", settings)}
+              />
             </TabsContent>
 
-            {/* Categories — own CRUD endpoints, only available once the widget has a numeric id */}
-            {isEdit && widget && (
-              <TabsContent value="categories" className="px-6 py-6 mt-0">
-                <CategoriesEditor widgetId={widget.id} />
-              </TabsContent>
-            )}
-
-            {/* Advanced */}
-            <TabsContent value="advanced" className="px-6 py-6 space-y-5 mt-0">
+            <TabsContent value="advanced" className="mt-0 space-y-5 px-6 py-6">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Chat Context IDs
-                </Label>
+                <FieldLabel>Rate limit / minute</FieldLabel>
                 <Input
-                  value={contextIdsRaw}
-                  onChange={(e) => setContextIdsRaw(e.target.value)}
-                  placeholder="12, 13"
-                  className="text-sm font-mono"
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={form.rate_limit_per_minute}
+                  onChange={(e) =>
+                    set("rate_limit_per_minute", Number(e.target.value))
+                  }
+                  className="max-w-32 text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs of context records. Leave empty to use account defaults.
+                  Max requests per visitor per minute. Default is 60.
                 </p>
               </div>
 
+              <ChatContextIdsField
+                value={form.chat_context_ids}
+                onChange={(ids) => set("chat_context_ids", ids)}
+              />
+
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  RAG Store IDs
-                </Label>
+                <FieldLabel>RAG store IDs</FieldLabel>
                 <Input
-                  value={ragIdsRaw}
-                  onChange={(e) => setRagIdsRaw(e.target.value)}
+                  value={form.rag_store_ids_raw}
+                  onChange={(e) => set("rag_store_ids_raw", e.target.value)}
                   placeholder="4"
-                  className="text-sm font-mono"
+                  className="font-mono text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Comma-separated numeric IDs of knowledge base stores. Leave empty to use account defaults.
+                  Knowledge base stores for retrieval. Leave empty for account defaults.
                 </p>
               </div>
 
-              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
                 <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                  If both lists are empty, the widget uses the account&apos;s active contexts and stores.
+                  Categories are available on the edit page after the widget is created.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : (
+        <div className="rounded-xl border bg-card">
+          <Tabs defaultValue="general">
+            <TabsList className="h-11 w-full justify-start gap-1 rounded-t-xl rounded-b-none border-b bg-transparent px-4">
+              <TabsTrigger value="general" className="text-xs">
+                General
+              </TabsTrigger>
+              <TabsTrigger value="origins" className="text-xs">
+                Origins
+              </TabsTrigger>
+              <TabsTrigger value="theme" className="text-xs">
+                Theme
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="text-xs">
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="categories" className="text-xs">
+                Categories
+              </TabsTrigger>
+              <TabsTrigger value="contexts" className="text-xs">
+                Contexts
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="general" className="mt-0 space-y-5 px-6 py-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 max-w-sm flex-1 space-y-1.5">
+                  <FieldLabel required>Widget name</FieldLabel>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder={widget!.name}
+                    className="text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Internal name — shown in the portal only. Widget ID{" "}
+                    <code className="rounded bg-muted px-1 font-mono">
+                      {widget!.widget_id}
+                    </code>{" "}
+                    is read-only.
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 pt-5">
+                  <ActiveToggle
+                    checked={form.is_active}
+                    onChange={(v) => set("is_active", v)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel>Welcome message</FieldLabel>
+                <Textarea
+                  value={form.welcome_message}
+                  onChange={(e) => set("welcome_message", e.target.value)}
+                  rows={3}
+                  className="resize-none text-sm"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <FieldLabel>Position</FieldLabel>
+                  <Select
+                    value={form.position}
+                    onValueChange={(v) => set("position", v as WidgetPosition)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POSITIONS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Default language</FieldLabel>
+                  <LanguageSelect
+                    value={normalizeUiLanguageCode(form.default_language)}
+                    onChange={(v) => set("default_language", v)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:max-w-xs">
+                <div className="space-y-1.5">
+                  <FieldLabel>Rate limit / minute</FieldLabel>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={form.rate_limit_per_minute}
+                    onChange={(e) =>
+                      set("rate_limit_per_minute", Number(e.target.value))
+                    }
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="origins" className="mt-0 px-6 py-6">
+              <AllowedOriginsEditor
+                origins={form.allowed_origins}
+                onChange={(origins) => set("allowed_origins", origins)}
+              />
+            </TabsContent>
+
+            <TabsContent value="theme" className="mt-0 px-6 py-6">
+              <ThemeEditor
+                theme={form.theme}
+                onChange={(theme) => set("theme", theme)}
+              />
+            </TabsContent>
+
+            <TabsContent value="settings" className="mt-0 px-6 py-6">
+              <SettingsEditor
+                settings={form.settings}
+                onChange={(settings) => set("settings", settings)}
+              />
+            </TabsContent>
+
+            <TabsContent value="categories" className="mt-0 px-6 py-6">
+              <CategoriesEditor widgetId={widget!.id} />
+            </TabsContent>
+
+            <TabsContent value="contexts" className="mt-0 space-y-5 px-6 py-6">
+              <ChatContextIdsField
+                value={form.chat_context_ids}
+                onChange={(ids) => set("chat_context_ids", ids)}
+              />
+              <div className="space-y-1.5">
+                <FieldLabel>RAG store IDs</FieldLabel>
+                <Input
+                  value={form.rag_store_ids_raw}
+                  onChange={(e) => set("rag_store_ids_raw", e.target.value)}
+                  placeholder="4"
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Knowledge base stores for retrieval. Leave empty for account defaults.
                 </p>
               </div>
             </TabsContent>
