@@ -623,8 +623,14 @@
       if (launcherTheme.icon_url) {
         return '<img class="launcher-icon" src="' + escapeAttr(launcherTheme.icon_url) + '" alt="">';
       }
-      var label = nonEmptyString(launcherTheme.label) || nonEmptyString(settings.launcher_label);
-      if (launcherTheme.type === 'text' && label) {
+      // Explicit theme.launcher.label (including "" / null) wins — empty means icon-only.
+      var label = '';
+      if (launcherTheme && Object.prototype.hasOwnProperty.call(launcherTheme, 'label')) {
+        label = String(launcherTheme.label == null ? '' : launcherTheme.label).trim();
+      } else {
+        label = nonEmptyString(settings.launcher_label) || '';
+      }
+      if (launcherTheme.type !== 'icon' && label) {
         return '<span class="launcher-inner">' + ICONS.chat + '<span class="launcher-text">' + escapeHtml(label) + '</span></span>';
       }
       return ICONS.chat;

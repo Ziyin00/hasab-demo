@@ -97,18 +97,7 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
               className="text-sm"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Launcher Label
-            </Label>
-            <Input
-              value={settings.launcher_label ?? ""}
-              onChange={(e) => set("launcher_label", e.target.value)}
-              placeholder="Ask"
-              className="text-sm"
-            />
-          </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Input Placeholder
             </Label>
@@ -120,7 +109,7 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
             />
             <p className="text-[10px] text-muted-foreground">
               Used for English. Amharic / Oromo use built-in translations when the visitor
-              switches language.
+              switches language. Launcher label is edited under Theme → Launcher Bubble.
             </p>
           </div>
         </div>

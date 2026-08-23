@@ -438,6 +438,13 @@ export function ChatWidget({
   const mutedColor = "#999";
   const launcherBg = theme?.launcher?.background_color ?? primaryColor;
   const launcherText = theme?.launcher?.text_color ?? "white";
+  // Explicit theme.launcher.label (including "" / null) wins — empty means icon-only.
+  // Only fall back to settings.launcher_label when the theme field was never set.
+  const launcherLabel =
+    theme?.launcher != null && Object.prototype.hasOwnProperty.call(theme.launcher, "label")
+      ? String(theme.launcher.label ?? "").trim()
+      : (settings?.launcher_label ?? "").trim();
+  const showLauncherText = theme?.launcher?.type !== "icon" && launcherLabel.length > 0;
 
   // Clamped to sane bounds — tighter when embedded so an arbitrary theme value
   // can't blow out the small preview box; looser for the real floating widget.
@@ -1253,11 +1260,11 @@ export function ChatWidget({
         ) : theme?.launcher?.icon_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={theme.launcher.icon_url} alt="" className="w-6 h-6 object-contain" />
-        ) : theme?.launcher?.type !== "icon" && (theme?.launcher?.label || settings?.launcher_label) ? (
+        ) : showLauncherText ? (
           <span className="flex items-center gap-1 px-1">
             <MessageSquareDot className="w-5 h-5 shrink-0" />
             <span className="text-xs font-semibold truncate max-w-18">
-              {theme?.launcher?.label || settings?.launcher_label}
+              {launcherLabel}
             </span>
           </span>
         ) : (

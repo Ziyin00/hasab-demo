@@ -242,16 +242,31 @@ function ChatContextIdsField({
                 <span className="ml-2 text-[10px] text-muted-foreground">missing</span>
               </DropdownMenuCheckboxItem>
             ))}
-          {value.length > 0 ? (
+          {(contexts ?? []).length > 0 ? (
             <>
               <DropdownMenuSeparator />
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                onClick={() => onChange([])}
-              >
-                Clear selection
-              </button>
+              <div className="flex items-center gap-1 px-1 py-0.5">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  disabled={(contexts ?? []).every((c) => selected.has(c.id))}
+                  onClick={() =>
+                    onChange([
+                      ...new Set([...(contexts ?? []).map((c) => c.id), ...value]),
+                    ])
+                  }
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-center rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  disabled={value.length === 0}
+                  onClick={() => onChange([])}
+                >
+                  Clear selection
+                </button>
+              </div>
             </>
           ) : null}
         </DropdownMenuContent>

@@ -100,7 +100,7 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
     if (editingContext) {
       setForm({
         name: editingContext.name,
-        priority: editingContext.priority,
+        priority: Number(editingContext.priority) || 0,
         is_active: editingContext.is_active,
         context_data: editingContext.context_data,
       });
@@ -250,8 +250,13 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
             type="number"
             min={0}
             max={200}
-            value={form.priority}
-            onChange={(e) => setForm((p) => ({ ...p, priority: Number(e.target.value) }))}
+            value={Number(form.priority) || 0}
+            onChange={(e) =>
+              setForm((p) => ({
+                ...p,
+                priority: Math.min(200, Math.max(0, Number(e.target.value) || 0)),
+              }))
+            }
             disabled={!apiKey}
             className="h-6 w-14 text-xs text-center px-1 font-mono"
           />
@@ -264,7 +269,7 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
               disabled={!apiKey}
               onClick={() => setForm((p) => ({ ...p, priority: preset.value }))}
               className={`py-1.5 text-xs rounded-md border transition-all ${
-                form.priority === preset.value
+                Number(form.priority) === preset.value
                   ? "border-primary bg-primary/10 text-primary font-semibold"
                   : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/60"
               }`}

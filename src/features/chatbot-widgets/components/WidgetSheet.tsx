@@ -39,7 +39,11 @@ import {
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
 import { normalizeQuickPrompts } from "../utils/quickPrompts";
-import { normalizeWidgetSettings } from "../utils/normalizeSettings";
+import {
+  mergeWidgetTheme,
+  normalizeWidgetSettings,
+  syncLauncherLabelFromTheme,
+} from "../utils/normalizeSettings";
 import { normalizeUiLanguageCode } from "../utils/languageCodes";
 
 const POSITIONS: { label: string; value: WidgetPosition }[] = [
@@ -67,8 +71,8 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
   panel_height: "580px",
   launcher_size: "64px",
   launcher: {
-    type: "text",
-    label: "Ask",
+    type: "icon",
+    label: "",
     icon_url: null,
     background_color: "#0f766e",
     text_color: "#ffffff",
@@ -97,7 +101,7 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
 const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
   title: "Hasab AI",
   subtitle: "Ready to help",
-  launcher_label: "Ask",
+  launcher_label: "",
   input_placeholder: "Ask in your language...",
   show_language_selector: true,
   languages: [
@@ -147,30 +151,31 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   const [ragIdsRaw, setRagIdsRaw] = useState("");
 
   useEffect(() => {
-    if (open) {
-      if (widget) {
-        const { id, widget_id, snippet, ...rest } = widget;
-        void id; void widget_id; void snippet;
-        const payload = rest as CreateChatbotWidgetPayload;
-        setForm({
-          ...payload,
-          settings: normalizeWidgetSettings({
-            ...payload.settings,
-            quick_prompts: normalizeQuickPrompts(
-              payload.settings?.quick_prompts,
-              payload.settings?.languages
-            ),
-          }),
-        });
-        setContextIdsRaw(widget.chat_context_ids.join(", "));
-        setRagIdsRaw(widget.rag_store_ids.join(", "));
-      } else {
-        setForm(emptyForm());
-        setContextIdsRaw("");
-        setRagIdsRaw("");
-      }
+    if (!open) return;
+    if (widget) {
+      const { id, widget_id, snippet, ...rest } = widget;
+      void id; void widget_id; void snippet;
+      const payload = rest as CreateChatbotWidgetPayload;
+      setForm({
+        ...payload,
+        theme: mergeWidgetTheme(DEFAULT_THEME, payload.theme),
+        settings: normalizeWidgetSettings({
+          ...payload.settings,
+          quick_prompts: normalizeQuickPrompts(
+            payload.settings?.quick_prompts,
+            payload.settings?.languages
+          ),
+        }),
+      });
+      setContextIdsRaw(widget.chat_context_ids.join(", "));
+      setRagIdsRaw(widget.rag_store_ids.join(", "));
+    } else {
+      setForm(emptyForm());
+      setContextIdsRaw("");
+      setRagIdsRaw("");
     }
-  }, [open, widget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate on open / widget id only
+  }, [open, widget?.id]);
 
   const set = <K extends keyof CreateChatbotWidgetPayload>(
     key: K,
@@ -189,13 +194,18 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
       default_language: normalizeUiLanguageCode(form.default_language),
       chat_context_ids: parseIds(contextIdsRaw),
       rag_store_ids: parseIds(ragIdsRaw),
-      settings: normalizeWidgetSettings({
-        ...form.settings,
-        quick_prompts: normalizeQuickPrompts(
-          form.settings?.quick_prompts,
-          form.settings?.languages
-        ),
-      }),
+      settings: normalizeWidgetSettings(
+        syncLauncherLabelFromTheme(
+          {
+            ...form.settings,
+            quick_prompts: normalizeQuickPrompts(
+              form.settings?.quick_prompts,
+              form.settings?.languages
+            ),
+          },
+          form.theme
+        )
+      ),
     };
 
     if (!payload.name.trim()) return;

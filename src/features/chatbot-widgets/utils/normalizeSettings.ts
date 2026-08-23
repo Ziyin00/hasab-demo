@@ -1,5 +1,6 @@
 import type {
   ChatbotWidgetSettings,
+  ChatbotWidgetTheme,
   LanguageOption,
   WidgetFeatures,
 } from "../types/chatbot-widget.types";
@@ -46,6 +47,25 @@ function normalizeLanguages(
   return out;
 }
 
+/**
+ * Merge API theme with defaults so nested launcher/header/mic/send never wipe
+ * when the backend omits keys.
+ */
+export function mergeWidgetTheme(
+  defaults: ChatbotWidgetTheme,
+  theme?: ChatbotWidgetTheme | null
+): ChatbotWidgetTheme {
+  const t = theme ?? {};
+  return {
+    ...defaults,
+    ...t,
+    launcher: { ...defaults.launcher, ...t.launcher },
+    header: { ...defaults.header, ...t.header },
+    mic: { ...defaults.mic, ...t.mic },
+    send: { ...defaults.send, ...t.send },
+  };
+}
+
 /** Settings blob as carried in data-settings on the embed snippet. */
 export function normalizeWidgetSettings(
   settings?: ChatbotWidgetSettings | null
@@ -59,4 +79,19 @@ export function normalizeWidgetSettings(
     quick_prompts: normalizeQuickPromptKeys(s.quick_prompts),
     features: normalizeWidgetFeatures(s.features),
   };
+}
+
+/**
+ * Keep CDN `settings.launcher_label` aligned with theme (single source of truth)
+ * without fighting the Settings tab on every keystroke.
+ */
+export function syncLauncherLabelFromTheme(
+  settings: ChatbotWidgetSettings,
+  theme: ChatbotWidgetTheme
+): ChatbotWidgetSettings {
+  const label =
+    theme.launcher != null && Object.prototype.hasOwnProperty.call(theme.launcher, "label")
+      ? String(theme.launcher.label ?? "")
+      : (settings.launcher_label ?? "");
+  return { ...settings, launcher_label: label };
 }
