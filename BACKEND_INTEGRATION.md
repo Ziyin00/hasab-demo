@@ -1,8 +1,10 @@
 # Hasab Backend Integration Guide
 
-**Last updated:** 2026-07-27  
+**Last updated:** 2026-08-22  
 **Reference implementation:** `src/features/chat/components/ChatWidget.tsx`  
 **CDN script target:** `https://api.hasab.ai/widget/v1/hasab-chatbot.js`
+
+> **Language & TTS (2026-08-22):** See [`WIDGET_LANGUAGE_AND_TTS_BACKEND.md`](./WIDGET_LANGUAGE_AND_TTS_BACKEND.md) for the backend spec on per-request reply language and Amharic-only TTS (`tts` / `language_instruction` fields).
 
 This document is the authoritative specification for everything the backend must provide for the chatbot widget system to work end-to-end — CRUD APIs, chat session management, audio transcription, category classification, analytics, and the CDN snippet script that must visually and behaviorally match `ChatWidget.tsx` exactly.
 
@@ -23,6 +25,8 @@ This document is the authoritative specification for everything the backend must
 11. [Data Models (Full Schemas)](#11-data-models-full-schemas)
 12. [CDN Script Layout Bugs — Preview vs Live Diff](#12-cdn-script-layout-bugs--preview-vs-live-diff-2026-07-27)
 
+**Also see:** [`CDN_UI_LOCALIZATION.md`](./CDN_UI_LOCALIZATION.md) — localize “Ready to help” and other chrome strings when the visitor switches language (must match `ChatWidget.tsx`).
+
 ---
 
 ## 1. System Overview
@@ -40,7 +44,7 @@ Dashboard (hasab-demo)                    Customer Site
 
 The admin builds a widget in the dashboard → gets an embed snippet → pastes it on their site. The CDN script (`hasab-chatbot.js`) parses `data-*` attributes from the script tag and renders a chat bubble that must look and behave identically to `ChatWidget.tsx`.
 
-**Same rendering, different API surface.** The CDN script and the dashboard preview share the same visual contract and storage keys, but differ in one key area: language preference. The dashboard calls `/chat/context` to push a "Language Preference" system prompt; the CDN script sends the `language` field in the chat body instead, and the backend injects the language instruction server-side for widget sessions. Everything else — storage keys, chat payload shape, audio upload, session lifecycle — is identical.
+**Same rendering, per-request language + TTS.** The CDN script and dashboard preview both send `language`, `language_instruction`, and `tts` on **every** chat message. The backend must honor those fields for reply text language and Amharic-only TTS. The dashboard no longer posts a persistent `"Language Preference"` context for widget chat (it clears stale ones). See [`WIDGET_LANGUAGE_AND_TTS_BACKEND.md`](./WIDGET_LANGUAGE_AND_TTS_BACKEND.md).
 
 ---
 
@@ -116,6 +120,9 @@ X-Visitor-Session-Id: <visitor_session_id>
   "source": "widget",
   "page_url": "https://example.com/contact",
   "language": "en",
+  "language_instruction": "CRITICAL: You MUST respond ONLY in English. Do not use any other language.",
+  "tts": false,
+  "enable_tts": false,
   "visitor_session_id": "550e8400-e29b-41d4-a716-446655440000",
   "new_conversation": true,
   "client_metadata": {
@@ -127,7 +134,9 @@ X-Visitor-Session-Id: <visitor_session_id>
     "browser_language": "en-US",
     "platform": "MacIntel",
     "device_type": "desktop",
-    "user_language": "en"
+    "user_language": "en",
+    "language_instruction": "CRITICAL: You MUST respond ONLY in English. Do not use any other language.",
+    "tts": false
   }
 }
 ```
@@ -156,7 +165,9 @@ X-Visitor-Session-Id: <visitor_session_id>
   "chat_history_id": 1042,
   "message": {
     "content": "I can help you with..."
-  }
+  },
+  "audio_base64": "<optional — Amharic TTS only, when request tts=true>",
+  "audio_content_type": "audio/wav"
 }
 ```
 
@@ -232,7 +243,9 @@ Only shown when `settings.features.audio_upload === true`. The mic button must n
 
 ## 5. Language Context API
 
-> **Scope: Dashboard preview only.** The CDN script (`hasab-chatbot.js`) does **not** call these endpoints — it sends the `language` field in the `POST /chat` body and the backend injects the language system prompt server-side for widget sessions. Only the dashboard's `ChatWidget.tsx` uses the context API below.
+> **Widget chat (2026-08-22):** Embed + dashboard bubble send `language` + `language_instruction` on each `POST /chat` / `POST /api/widget/chat`. Backend must use those fields — not this context API — for widget reply language. Dashboard widget clears stale `"Language Preference"` contexts but does not post new ones. Full spec: [`WIDGET_LANGUAGE_AND_TTS_BACKEND.md`](./WIDGET_LANGUAGE_AND_TTS_BACKEND.md).
+
+> **Legacy note:** The endpoints below remain for non-widget admin chat flows. Do not let `"Language Preference"` contexts override per-request widget `language`.
 
 The dashboard preview pushes the visitor's selected language as a server-side context so the LLM responds in the correct language.
 

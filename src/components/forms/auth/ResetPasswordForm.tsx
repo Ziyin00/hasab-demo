@@ -71,7 +71,7 @@ export function ResetPasswordForm({ token, email }: ResetPasswordFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         {rootError && (
           <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
             {rootError}

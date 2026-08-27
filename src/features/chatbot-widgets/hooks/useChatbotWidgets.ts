@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { AxiosError } from "axios";
+import { useAuthStore } from "@/store/auth.store";
 import { chatbotWidgetApi } from "../api/chatbot-widget.api";
 import type {
   CreateChatbotWidgetPayload,
@@ -10,18 +11,22 @@ import type {
 const WIDGETS_KEY = ["chatbot-widgets"] as const;
 
 export function useChatbotWidget(id: number) {
+  const authenticated = useAuthStore((s) => s.authenticated);
   return useQuery({
     queryKey: ["chatbot-widget", id],
     queryFn: () => chatbotWidgetApi.get(id),
     staleTime: 2 * 60 * 1000,
+    enabled: authenticated && Number.isFinite(id) && id > 0,
   });
 }
 
 export function useChatbotWidgets() {
+  const authenticated = useAuthStore((s) => s.authenticated);
   return useQuery({
     queryKey: WIDGETS_KEY,
     queryFn: chatbotWidgetApi.list,
     staleTime: 2 * 60 * 1000,
+    enabled: authenticated,
   });
 }
 

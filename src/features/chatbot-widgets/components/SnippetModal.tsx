@@ -12,11 +12,39 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { ChatbotWidget } from "../types/chatbot-widget.types";
+import { normalizeWidgetSettings } from "../utils/normalizeSettings";
+import { normalizeUiLanguageCode } from "../utils/languageCodes";
 
 interface SnippetModalProps {
   widget: ChatbotWidget | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+/** Bump when widget script behavior changes — busts browser/CDN caches on embed pages. */
+const WIDGET_SCRIPT_VERSION = "20260825a";
+
+/** CDN script URL — localhost copies use the patched script from /public. */
+export function getWidgetScriptSrc(origin?: string): string {
+  const fromEnv = process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL;
+  const base = (() => {
+    if (fromEnv) return fromEnv.replace(/\?.*$/, "");
+
+    if (origin) {
+      try {
+        const { hostname } = new URL(origin);
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+          return `${origin.replace(/\/$/, "")}/widget/v1/hasab-chatbot.js`;
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+
+    return "https://api.hasab.ai/widget/v1/hasab-chatbot.js";
+  })();
+
+  return `${base}?v=${WIDGET_SCRIPT_VERSION}`;
 }
 
 /** Keeps single-quoted HTML attributes safe when a value contains a quote, <, >, or &. */
@@ -34,13 +62,14 @@ function escapeAttr(value: string): string {
  * field by field) so every configured value — including nested launcher/mic/send
  * overrides — is guaranteed to be carried into the tag exactly as saved. */
 function buildAttrs(widget: ChatbotWidget): [string, string][] {
+  const settings = normalizeWidgetSettings(widget.settings);
   return [
     ["data-widget-id", widget.widget_id],
     ["data-position", widget.position],
-    ["data-default-language", widget.default_language],
+    ["data-default-language", normalizeUiLanguageCode(widget.default_language)],
     ["data-welcome-message", widget.welcome_message],
     ["data-theme", JSON.stringify(widget.theme)],
-    ["data-settings", JSON.stringify(widget.settings)],
+    ["data-settings", JSON.stringify(settings)],
   ];
 }
 
@@ -49,12 +78,16 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
 
   if (!widget) return null;
 
+  const scriptSrc = getWidgetScriptSrc(
+    typeof window !== "undefined" ? window.location.origin : undefined
+  );
   const attrs = buildAttrs(widget);
+  // TTS integration (disabled): const ttsEnabled = settings.features?.tts === true;
 
   const snippet = [
     "<script",
     "  async",
-    '  src="https://api.hasab.ai/widget/v1/hasab-chatbot.js"',
+    `  src="${scriptSrc}"`,
     ...attrs.map(([key, value]) => `  ${key}='${escapeAttr(value)}'`),
     "></script>",
   ].join("\n");
@@ -94,7 +127,7 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
                   {"\n  "}
                   <span className="text-[#64d2ff]">src</span>
                   <span className="text-white">=</span>
-                  <span className="text-[#ff9f43]">&quot;https://api.hasab.ai/widget/v1/hasab-chatbot.js&quot;</span>
+                  <span className="text-[#ff9f43]">&quot;{scriptSrc}&quot;</span>
                   {attrs.map(([key, value]) => (
                     <span key={key}>
                       {"\n  "}
@@ -123,6 +156,21 @@ export function SnippetModal({ widget, open, onOpenChange }: SnippetModalProps) 
               is ever sent to the browser.
             </p>
           </div>
+
+          {/* TTS integration (disabled):
+          {ttsEnabled ? (
+            <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+                TTS replies
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                This snippet includes{" "}
+                <code className="font-mono bg-muted px-0.5 rounded">features.tts: true</code>.
+                On allowed origins, assistant replies include Amharic audio (Tigist) only when the visitor selects Amharic. English and Oromo get text-only replies.
+              </p>
+            </div>
+          ) : null}
+          */}
 
           <Button className="w-full gap-2" onClick={handleCopy}>
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

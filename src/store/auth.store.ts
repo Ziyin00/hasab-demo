@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { apiClient } from '@/lib/api-client'
+import { clearAppQueryCache } from '@/lib/react-query/queryClient'
+import { clearAccountLocalState } from '@/lib/clearAccountLocalState'
 import { User, LoginResponse, ProfileResponse } from '@/types/api.types'
 import { toast } from 'sonner'
 
@@ -87,6 +89,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async tokens => {
     set({ loadingState: true })
+    const previousUserId = get().user?.id
+    const wasAuthenticated = get().authenticated
+
     localStorage.setItem('tokens', JSON.stringify(tokens))
     localStorage.setItem('accessTokenExpiresAt', tokens.access_token_expires_at)
     localStorage.setItem('refreshTokenExpiresAt', tokens.refresh_token_expires_at)
@@ -94,6 +99,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await fetchUserDetails(tokens.access_token)
       localStorage.setItem('user', JSON.stringify(user))
+
+      // New session or switched account — drop previous user's widgets / chat state.
+      // Token refresh reuses login() for the same user and must not wipe the cache.
+      if (!wasAuthenticated || (previousUserId != null && previousUserId !== user.id)) {
+        clearAppQueryCache()
+        clearAccountLocalState()
+      }
       
       // Set cookie for middleware
       if (typeof window !== 'undefined') {
@@ -122,6 +134,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('refreshTokenExpiresAt')
     localStorage.removeItem('styles')
     localStorage.removeItem('editor-storage')
+    clearAccountLocalState()
+    clearAppQueryCache()
     
     // Clear cookie
     if (typeof window !== 'undefined') {

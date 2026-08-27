@@ -1,5 +1,10 @@
 import { WidgetFormPage } from "@/features/chatbot-widgets/components/WidgetFormPage";
+import { RequireOrgUser } from "@/components/auth/RequireAccess";
 
 export default function NewWidgetPage() {
-  return <WidgetFormPage />;
+  return (
+    <RequireOrgUser>
+      <WidgetFormPage />
+    </RequireOrgUser>
+  );
 }

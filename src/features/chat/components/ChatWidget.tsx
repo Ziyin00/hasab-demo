@@ -15,6 +15,16 @@ import type {
   ChatbotWidgetSettings,
   WidgetPosition,
 } from "@/features/chatbot-widgets/types/chatbot-widget.types";
+import {
+  resolveQuickPromptsForLang,
+} from "@/features/chatbot-widgets/utils/quickPrompts";
+import {
+  normalizeUiLanguageCode,
+  resolveLanguageInstruction,
+  // shouldRequestTts,
+  toSttLanguageCode,
+  // isTtsLanguage,
+} from "@/features/chatbot-widgets/utils/languageCodes";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +33,10 @@ interface Message {
   content: string;
   isError?: boolean;
   isVoice?: boolean;
+  // TTS integration (disabled):
+  // /** Assistant Tigist audio — only set when the visitor had Amharic selected at send time. */
+  // playTts?: boolean;
+  // replyLang?: string;
   audioUrl?: string;
   ts: Date;
 }
@@ -36,9 +50,11 @@ const LANG_STRINGS: Record<Lang, {
   label: string;
   placeholder: string;
   online: string;
+  subtitle: string;
   thinking: string;
   welcomeTitle: string;
   welcomeBody: string;
+  today: string;
   prompts: string[];
   /** Stored server-side as a context — never prepended to messages */
   contextInstruction: string;
@@ -48,9 +64,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "English",
     placeholder: "Type your message...",
     online: "Online",
+    subtitle: "Ready to help",
     thinking: "Thinking",
     welcomeTitle: "Welcome",
     welcomeBody: "Pick a question above, type, or tap the mic to speak.",
+    today: "Today",
     prompts: ["What can you help me with?", "Tell me about your features", "How do I get started?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in English. Do not use any other language.",
     sttLang: "eng",
@@ -59,9 +77,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "አማርኛ",
     placeholder: "መልዕክትዎን ይፃፉ...",
     online: "ኦንላይን",
+    subtitle: "ለመርዳት ዝግጁ",
     thinking: "እያሰበ ነው",
     welcomeTitle: "እንኳን ወደ ቻቱ በደህና መጡ",
     welcomeBody: "ጥያቄ ይምረጡ፣ ይፃፉ ወይም ሚክሮፎኑን ይጫኑ።",
+    today: "ዛሬ",
     prompts: ["ምን ሊረዱኝ ይችላሉ?", "ስለ ፕሮዳክቱ ይናገሩ", "እንዴት እጀምር?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in Amharic (አማርኛ). Do not use English or any other language.",
     sttLang: "amh",
@@ -70,9 +90,11 @@ const LANG_STRINGS: Record<Lang, {
     label: "Afaan Oromoo",
     placeholder: "Ergaa kee barreessi...",
     online: "Online",
+    subtitle: "Gargaaruuf qophaa'eera",
     thinking: "Yaadaa jira",
     welcomeTitle: "Baga nagaan dhufte",
     welcomeBody: "Gaaffii filadhu, barreessi yookaan miikrofoona tuqi.",
+    today: "Har'a",
     prompts: ["Maal na gargaaruu dandeessa?", "Waa'ee tajaajila dubbadhu", "Akkami jalqabuu?"],
     contextInstruction: "CRITICAL: You MUST respond ONLY in Afaan Oromoo. Do not use English, Amharic, or any other language.",
     sttLang: "orm",
@@ -85,13 +107,9 @@ const LANG_OPTIONS: { value: Lang; native: string }[] = [
   { value: "om", native: "Afaan Oromoo" },
 ];
 
-// Normalises any code variant (amh/am, orm/om, eng/en) to the LANG_STRINGS key.
-// Widget settings.languages may use ISO 639-3 codes ("amh", "orm") while
-// LANG_STRINGS uses the short codes ("am", "om") — both must resolve correctly.
+// Widget settings.languages may use ISO 639-3 aliases ("amh", "orm"); normalize before use.
 function toLangKey(code: string): Lang {
-  if (code === "am" || code === "amh") return "am";
-  if (code === "om" || code === "orm") return "om";
-  return "en";
+  return normalizeUiLanguageCode(code);
 }
 
 // ─── Audio utilities (mirrors fayda-demo.html) ───────────────────────────────
@@ -215,12 +233,20 @@ function renderMarkdown(raw: string): string {
 
 // ─── Voice message player ─────────────────────────────────────────────────────
 
-function VoiceMessage({ audioUrl }: { audioUrl: string }) {
+function VoiceMessage({
+  audioUrl,
+  tone = "user",
+}: {
+  audioUrl: string;
+  /** User bubbles sit on saturated color (light controls); assistant on light surfaces. */
+  tone?: "user" | "assistant";
+}) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isUser = tone === "user";
 
   // Stable decorative waveform bars seeded from the URL
   const bars = useMemo(() => {
@@ -257,17 +283,21 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
   return (
     <div className="flex flex-col gap-1.5 min-w-[180px]">
       <div className="flex items-center gap-2">
-        {/* Play / Pause */}
         <button
+          type="button"
           onClick={togglePlay}
-          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/20 hover:bg-white/30 transition-colors"
+          className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+            isUser
+              ? "bg-white/20 hover:bg-white/30"
+              : "bg-black/8 hover:bg-black/12 dark:bg-white/15 dark:hover:bg-white/25"
+          )}
         >
           {playing
-            ? <Pause className="w-3.5 h-3.5 text-white" />
-            : <Play className="w-3.5 h-3.5 text-white translate-x-px" />}
+            ? <Pause className={cn("w-3.5 h-3.5", isUser ? "text-white" : "text-foreground")} />
+            : <Play className={cn("w-3.5 h-3.5 translate-x-px", isUser ? "text-white" : "text-foreground")} />}
         </button>
 
-        {/* Waveform bars */}
         <div className="flex items-center gap-px flex-1 h-7">
           {bars.map((h, i) => (
             <div
@@ -276,22 +306,44 @@ function VoiceMessage({ audioUrl }: { audioUrl: string }) {
               style={{
                 height: `${h * 100}%`,
                 background: i / bars.length <= progress
-                  ? "rgba(255,255,255,0.95)"
-                  : "rgba(255,255,255,0.35)",
+                  ? (isUser ? "rgba(255,255,255,0.95)" : "rgba(60,98,120,0.9)")
+                  : (isUser ? "rgba(255,255,255,0.35)" : "rgba(60,98,120,0.28)"),
               }}
             />
           ))}
         </div>
 
-        {/* Time */}
-        <span className="text-[11px] text-white/75 shrink-0 tabular-nums">
+        <span
+          className={cn(
+            "text-[11px] shrink-0 tabular-nums",
+            isUser ? "text-white/75" : "text-muted-foreground"
+          )}
+        >
           {fmt(playing || progress > 0 ? currentTime : duration)}
         </span>
       </div>
-
     </div>
   );
 }
+
+// TTS integration (disabled):
+// /** Soft-fail decode of TTS payload from chat responses (guide §3). */
+// function audioUrlFromChatPayload(data: Record<string, unknown>): string | undefined {
+//   const b64 = data.audio_base64;
+//   if (typeof b64 !== "string" || !b64) return undefined;
+//   const contentType =
+//     typeof data.audio_content_type === "string" && data.audio_content_type.trim()
+//       ? data.audio_content_type
+//       : "audio/wav";
+//   try {
+//     const binary = atob(b64);
+//     const bytes = new Uint8Array(binary.length);
+//     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+//     return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+//   } catch {
+//     return undefined;
+//   }
+// }
 
 // ─── Session helpers (conversation lifecycle guide) ──────────────────────────
 // visitor_session_id and chat_history_id both live in localStorage, not
@@ -363,7 +415,11 @@ export function ChatWidget({
   botNameOverride,
   defaultLanguage,
 }: ChatWidgetProps = {}) {
-  const { data: config } = useWidgetConfig();
+  // Skip legacy `/api/widget` fetch when we already have real widget theme/settings
+  // (floating bubble + widget preview). This avoids 404 spam from legacy endpoint.
+  // Legacy single-widget config endpoint is noisy/optional; when we are
+  // rendering a real widget preview (theme/settings provided), we don't need it.
+  const { data: config } = useWidgetConfig({ enabled: false });
   const { user } = useAuthStore();
   // config (legacy useWidgetConfig) is this admin session's own single-widget
   // settings — never part of a real widget's data-theme, so it must not leak
@@ -382,6 +438,13 @@ export function ChatWidget({
   const mutedColor = "#999";
   const launcherBg = theme?.launcher?.background_color ?? primaryColor;
   const launcherText = theme?.launcher?.text_color ?? "white";
+  // Explicit theme.launcher.label (including "" / null) wins — empty means icon-only.
+  // Only fall back to settings.launcher_label when the theme field was never set.
+  const launcherLabel =
+    theme?.launcher != null && Object.prototype.hasOwnProperty.call(theme.launcher, "label")
+      ? String(theme.launcher.label ?? "").trim()
+      : (settings?.launcher_label ?? "").trim();
+  const showLauncherText = theme?.launcher?.type !== "icon" && launcherLabel.length > 0;
 
   // Clamped to sane bounds — tighter when embedded so an arbitrary theme value
   // can't blow out the small preview box; looser for the real floating widget.
@@ -391,7 +454,10 @@ export function ChatWidget({
 
   const showMic = settings?.features?.audio_upload === true;
   const showPrompts = settings ? settings.features?.quick_prompts !== false : true;
-  const showLangSelector = settings ? settings.features?.language_selector !== false : true;
+  const showLangSelector = settings
+    ? settings.features?.language_selector !== false &&
+      settings.show_language_selector !== false
+    : true;
 
   // isMounted prevents hydration mismatch: useAuthStore reads localStorage which
   // is unavailable on the server, so SSR and client initial render both use the
@@ -416,46 +482,63 @@ export function ChatWidget({
   // lang is a plain string (not the Lang union) because settings.languages can
   // list any code from the form; LANG_STRINGS only has full translations for
   // en/am/om today, so unknown codes fall back to the English strings below.
-  const [lang, setLang] = useState<string>(defaultLanguage ?? "en");
+  const [lang, setLang] = useState<string>(normalizeUiLanguageCode(defaultLanguage ?? "en"));
   useEffect(() => {
     const stored = localStorage.getItem("hasabChatLang");
-    if (stored) setLang(stored);
+    if (stored) setLang(normalizeUiLanguageCode(stored));
   }, []);
   const ui = LANG_STRINGS[toLangKey(lang)];
-  const languageOptions = settings?.languages?.length
-    ? settings.languages
-    : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
+  const langKey = toLangKey(lang);
+  // Built-in UI strings for am/orm; English can use admin-configured overrides
+  const displayWelcome =
+    langKey === "en" ? (welcomeMessage ?? ui.welcomeBody) : ui.welcomeBody;
+  const displayPlaceholder =
+    langKey === "en"
+      ? settings?.input_placeholder || ui.placeholder
+      : ui.placeholder;
+  const displaySubtitle =
+    langKey === "en"
+      ? settings?.subtitle || ui.subtitle
+      : ui.subtitle;
+  const languageOptions = useMemo(() => {
+    const raw = settings?.languages?.length
+      ? settings.languages
+      : LANG_OPTIONS.map((o) => ({ code: o.value, label: o.native }));
 
-  // Push language preference as a server-side context (mirrors fayda-demo.html updateLanguageContext).
-  // Falls back to a generated instruction (using the form-configured label) for
-  // any language code from settings.languages that isn't one of the 3 fully
-  // translated ones below.
-  const updateLangContext = async (l: string) => {
-    const label = languageOptions.find((o) => o.code === l)?.label ?? l;
-    const instruction =
-      LANG_STRINGS[toLangKey(l)]?.contextInstruction ??
-      `CRITICAL: You MUST respond ONLY in ${label}. Do not use any other language.`;
+    const seen = new Set<string>();
+    return raw.reduce<{ code: string; label: string }[]>((acc, lang) => {
+      const code = normalizeUiLanguageCode(lang.code);
+      if (seen.has(code)) return acc;
+      seen.add(code);
+      acc.push({ code, label: lang.label });
+      return acc;
+    }, []);
+  }, [settings?.languages]);
+
+  // Widget sessions send language on every POST /chat — do not push a persistent
+  // account "Language Preference" context (that can stick on Amharic and override en).
+  const clearStaleLanguageContext = async () => {
     try {
       const r = await apiClient.get("/chat/context");
       const all: { id: number; name: string }[] = r.data?.contexts ?? r.data?.data ?? [];
       const existing = all.filter((c) => c.name === "Language Preference");
+      if (existing.length === 0) return;
       await Promise.all(existing.map((c) => apiClient.delete(`/chat/context/${c.id}`)));
-      if (existing.length > 0) await new Promise((res) => setTimeout(res, 300));
-      await apiClient.post("/chat/context", {
-        context_data: instruction,
-        name: "Language Preference",
-        priority: 100,
-        is_active: true,
-      });
     } catch {
-      // Silently fail — don't block the user
+      // Silently fail — per-request language_instruction still sent on each message
     }
   };
 
   const changeLang = (next: string) => {
-    setLang(next);
-    localStorage.setItem("hasabChatLang", next);
-    updateLangContext(next);
+    const normalized = normalizeUiLanguageCode(next);
+    if (normalized === lang) return;
+    setLang(normalized);
+    localStorage.setItem("hasabChatLang", normalized);
+    // New language → fresh conversation so replies follow the visitor's pick,
+    // not the admin default_language baked into an old chat_history_id.
+    setMessages([]);
+    clearHistoryId();
+    void clearStaleLanguageContext();
   };
 
   // Chat state
@@ -504,13 +587,15 @@ export function ChatWidget({
     };
   }, []);
 
-  // Push language context to server whenever the widget opens or language changes
+  // Clear stale account language context when the panel opens or language changes.
   useEffect(() => {
-    if (open) updateLangContext(lang);
+    if (open) void clearStaleLanguageContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, lang]);
 
   // ── Send ──────────────────────────────────────────────────────────────────
+  // Language integration: every message carries `language` + `language_instruction`.
+  // TTS integration (disabled): tts / enable_tts / audio_base64 / Tigist player.
 
   const send = async (text: string, isVoice = false, audioUrl?: string) => {
     const trimmed = text.trim();
@@ -523,17 +608,31 @@ export function ChatWidget({
     ]);
     setLoading(true);
 
+    await clearStaleLanguageContext();
+
     const visitorId = getVisitorSessionId();
     const chatHistoryId = getHistoryId();
+
+    const chatLang = normalizeUiLanguageCode(lang);
+    const langLabel = languageOptions.find((o) => o.code === chatLang)?.label;
+    const languageInstruction = resolveLanguageInstruction(chatLang, langLabel);
+    // const requestTts = shouldRequestTts(settings?.features?.tts, chatLang);
 
     const buildBody = (newConversation: boolean) => ({
       message: trimmed,
       model: "hasab-1-lite",
       source: "widget",
       page_url: window.location.href,
-      language: lang,
+      language: chatLang,
+      language_instruction: languageInstruction,
+      // tts: requestTts,
+      // enable_tts: requestTts,
       visitor_session_id: visitorId,
-      client_metadata: buildClientMetadata(lang),
+      client_metadata: {
+        ...buildClientMetadata(chatLang),
+        language_instruction: languageInstruction,
+        // tts: requestTts,
+      },
       ...(newConversation
         ? { new_conversation: true }
         : { chat_history_id: chatHistoryId }),
@@ -541,19 +640,25 @@ export function ChatWidget({
 
     const applyResponse = (r: { data: Record<string, unknown> }) => {
       if (r.data?.chat_history_id) saveHistoryId(r.data.chat_history_id as number);
-      return (
+      const content =
         (r.data?.message as { content?: string })?.content ??
         (r.data?.data as { message?: string })?.message ??
-        "No response received."
-      );
+        "No response received.";
+      // const audioUrl = requestTts
+      //   ? audioUrlFromChatPayload(r.data ?? {})
+      //   : undefined;
+      return { content };
     };
 
     try {
       const r = await apiClient.post("/chat", buildBody(!chatHistoryId), {
         headers: { "X-Visitor-Session-Id": visitorId },
       });
-      const content = applyResponse(r);
-      setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+      const { content } = applyResponse(r);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content, ts: new Date() },
+      ]);
     } catch (err: unknown) {
       const status = (err as { response?: { status: number } })?.response?.status;
       // Stale chat_history_id — clear and retry as new conversation (guide §11)
@@ -563,8 +668,11 @@ export function ChatWidget({
           const r2 = await apiClient.post("/chat", buildBody(true), {
             headers: { "X-Visitor-Session-Id": visitorId },
           });
-          const content = applyResponse(r2);
-          setMessages((prev) => [...prev, { role: "assistant", content, ts: new Date() }]);
+          const { content } = applyResponse(r2);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content, ts: new Date() },
+          ]);
           return;
         } catch { /* fall through to error message */ }
       }
@@ -608,8 +716,8 @@ export function ChatWidget({
     form.append("translate", "false");
     form.append("summarize", "false");
     form.append("is_meeting", "false");
-    form.append("language", ui.sttLang);
-    form.append("source_language", ui.sttLang);
+    form.append("language", toSttLanguageCode(lang));
+    form.append("source_language", toSttLanguageCode(lang));
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -741,9 +849,11 @@ export function ChatWidget({
     </div>
   );
 
-  const quickPromptItems = settings?.quick_prompts?.length
-    ? settings.quick_prompts.map((p) => ({ label: p.label, text: p.prompt }))
-    : ui.prompts.map((q) => ({ label: q, text: q }));
+  const resolvedPrompts = resolveQuickPromptsForLang(settings?.quick_prompts, lang);
+  const quickPromptItems =
+    resolvedPrompts !== null
+      ? resolvedPrompts.map((p) => ({ label: p.label, text: p.prompt }))
+      : ui.prompts.map((q) => ({ label: q, text: q }));
 
   return (
     <div className={embedded ? "relative w-full h-full overflow-hidden" : "contents"}>
@@ -791,7 +901,7 @@ export function ChatWidget({
                   className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: "#22c55e", boxShadow: "0 0 0 2px rgba(34,197,94,0.3)" }}
                 />
-                {settings?.subtitle || ui.online}
+                {displaySubtitle}
               </p>
             </div>
           </div>
@@ -863,13 +973,13 @@ export function ChatWidget({
                 className="mt-1 text-[12px] text-center"
                 style={{ color: mutedColor }}
               >
-                {settings?.subtitle || ui.online}
+                {displaySubtitle}
               </p>
 
               {/* "Today" date separator */}
               <div className="flex items-center w-full gap-3 mt-6 mb-4">
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
-                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <span className="text-[11px]" style={{ color: mutedColor }}>{ui.today}</span>
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
               </div>
 
@@ -885,12 +995,12 @@ export function ChatWidget({
                     borderBottomLeftRadius: "4px",
                   }}
                 >
-                  {welcomeMessage ?? ui.welcomeBody}
+                  {displayWelcome}
                 </div>
               </div>
 
               {/* Quick prompt chips — parallel with welcome message; last chip has bot avatar */}
-              {showPrompts && (settings ? settings.quick_prompts?.length : true) && (
+              {showPrompts && quickPromptItems.length > 0 && (
                 <div className="w-full space-y-2 mt-1">
                   {quickPromptItems.map((q, idx, arr) => (
                     <div key={q.label} className="flex items-center gap-2">
@@ -920,7 +1030,7 @@ export function ChatWidget({
               {/* "Today" separator */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
-                <span className="text-[11px]" style={{ color: mutedColor }}>Today</span>
+                <span className="text-[11px]" style={{ color: mutedColor }}>{ui.today}</span>
                 <div className="flex-1 h-px" style={{ background: borderColor }} />
               </div>
 
@@ -955,7 +1065,7 @@ export function ChatWidget({
                     >
                       {msg.isVoice && msg.audioUrl ? (
                         <div className="space-y-1.5">
-                          <VoiceMessage audioUrl={msg.audioUrl} />
+                          <VoiceMessage audioUrl={msg.audioUrl} tone="user" />
                           {msg.content && (
                             <p className="text-[11px] text-white leading-snug opacity-80 pt-0.5">
                               {msg.content}
@@ -963,7 +1073,14 @@ export function ChatWidget({
                           )}
                         </div>
                       ) : msg.role === "assistant" && !msg.isError ? (
-                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                        <div className="space-y-1.5">
+                          {/* TTS integration (disabled):
+                          {msg.playTts && msg.audioUrl && isTtsLanguage(msg.replyLang ?? lang) ? (
+                            <VoiceMessage audioUrl={msg.audioUrl} tone="assistant" />
+                          ) : null}
+                          */}
+                          <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                        </div>
                       ) : (
                         msg.content
                       )}
@@ -1084,7 +1201,7 @@ export function ChatWidget({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(input); } }}
-                  placeholder={settings?.input_placeholder || ui.placeholder}
+                  placeholder={displayPlaceholder}
                   disabled={loading}
                   className="flex-1 bg-transparent text-[13px] focus:outline-none"
                   style={{ color: theme?.text_color ?? "#111" }}
@@ -1144,11 +1261,11 @@ export function ChatWidget({
         ) : theme?.launcher?.icon_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={theme.launcher.icon_url} alt="" className="w-6 h-6 object-contain" />
-        ) : theme?.launcher?.type !== "icon" && (theme?.launcher?.label || settings?.launcher_label) ? (
+        ) : showLauncherText ? (
           <span className="flex items-center gap-1 px-1">
             <MessageSquareDot className="w-5 h-5 shrink-0" />
             <span className="text-xs font-semibold truncate max-w-18">
-              {theme?.launcher?.label || settings?.launcher_label}
+              {launcherLabel}
             </span>
           </span>
         ) : (

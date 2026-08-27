@@ -38,6 +38,13 @@ import {
   useCreateChatbotWidget,
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
+import { prepareQuickPromptsForSave } from "../utils/quickPrompts";
+import {
+  mergeWidgetTheme,
+  normalizeWidgetSettings,
+  syncLauncherLabelFromTheme,
+} from "../utils/normalizeSettings";
+import { normalizeUiLanguageCode } from "../utils/languageCodes";
 
 const POSITIONS: { label: string; value: WidgetPosition }[] = [
   { label: "Bottom Right", value: "bottom-right" },
@@ -64,8 +71,8 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
   panel_height: "580px",
   launcher_size: "64px",
   launcher: {
-    type: "text",
-    label: "Ask",
+    type: "icon",
+    label: "",
     icon_url: null,
     background_color: "#0f766e",
     text_color: "#ffffff",
@@ -94,15 +101,17 @@ const DEFAULT_THEME: ChatbotWidgetTheme = {
 const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
   title: "Hasab AI",
   subtitle: "Ready to help",
-  launcher_label: "Ask",
+  launcher_label: "",
   input_placeholder: "Ask in your language...",
   show_language_selector: true,
   languages: [
     { code: "en", label: "English" },
+    { code: "am", label: "Amharic" },
+    { code: "om", label: "Oromo" },
   ],
-  quick_prompts: [],
   features: {
     audio_upload: false,
+    tts: false,
     quick_prompts: true,
     language_selector: true,
   },
@@ -141,20 +150,31 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   const [ragIdsRaw, setRagIdsRaw] = useState("");
 
   useEffect(() => {
-    if (open) {
-      if (widget) {
-        const { id, widget_id, snippet, ...rest } = widget;
-        void id; void widget_id; void snippet;
-        setForm(rest as CreateChatbotWidgetPayload);
-        setContextIdsRaw(widget.chat_context_ids.join(", "));
-        setRagIdsRaw(widget.rag_store_ids.join(", "));
-      } else {
-        setForm(emptyForm());
-        setContextIdsRaw("");
-        setRagIdsRaw("");
-      }
+    if (!open) return;
+    if (widget) {
+      const { id, widget_id, snippet, ...rest } = widget;
+      void id; void widget_id; void snippet;
+      const payload = rest as CreateChatbotWidgetPayload;
+      setForm({
+        ...payload,
+        theme: mergeWidgetTheme(DEFAULT_THEME, payload.theme),
+        settings: normalizeWidgetSettings({
+          ...payload.settings,
+          quick_prompts: prepareQuickPromptsForSave(
+            payload.settings?.quick_prompts,
+            payload.settings?.languages
+          ),
+        }),
+      });
+      setContextIdsRaw(widget.chat_context_ids.join(", "));
+      setRagIdsRaw(widget.rag_store_ids.join(", "));
+    } else {
+      setForm(emptyForm());
+      setContextIdsRaw("");
+      setRagIdsRaw("");
     }
-  }, [open, widget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate on open / widget id only
+  }, [open, widget?.id]);
 
   const set = <K extends keyof CreateChatbotWidgetPayload>(
     key: K,
@@ -170,8 +190,21 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
   const handleSave = () => {
     const payload: CreateChatbotWidgetPayload = {
       ...form,
+      default_language: normalizeUiLanguageCode(form.default_language),
       chat_context_ids: parseIds(contextIdsRaw),
       rag_store_ids: parseIds(ragIdsRaw),
+      settings: normalizeWidgetSettings(
+        syncLauncherLabelFromTheme(
+          {
+            ...form.settings,
+            quick_prompts: prepareQuickPromptsForSave(
+              form.settings?.quick_prompts,
+              form.settings?.languages
+            ),
+          },
+          form.theme
+        )
+      ),
     };
 
     if (!payload.name.trim()) return;
@@ -370,22 +403,26 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
           </Tabs>
         </div>
 
-          {/* Live preview — real, interactive chat scoped to this widget's theme/settings */}
-          {/* <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-2 border-l bg-muted/30 p-4">
+          {/* Live preview — switches language/prompts live with settings */}
+          <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-2 border-l bg-muted/30 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Live Preview
             </p>
-            <div className="flex-1 rounded-2xl overflow-hidden border shadow-sm bg-background">
+            <p className="text-[10px] text-muted-foreground leading-relaxed -mt-1">
+              Switch language in the preview header to verify per-language quick prompts.
+            </p>
+            <div className="relative flex-1 min-h-[480px] rounded-2xl overflow-hidden border shadow-sm bg-background">
               <ChatWidget
                 embedded
                 theme={form.theme}
-                settings={form.settings}
+                settings={normalizeWidgetSettings(form.settings)}
                 position={form.position}
                 welcomeMessage={form.welcome_message}
                 botNameOverride={form.settings.title || form.name || "Preview"}
+                defaultLanguage={normalizeUiLanguageCode(form.default_language ?? "en")}
               />
             </div>
-          </div> */}
+          </div>
         </div>
 
         <SheetFooter className="px-6 py-4 border-t shrink-0">

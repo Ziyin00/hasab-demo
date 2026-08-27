@@ -29,6 +29,32 @@ export function useCreateCategory(widgetId: number) {
   });
 }
 
+/** Creates several categories in order (used for the guide starter set). */
+export function useCreateStarterCategories(widgetId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payloads: CreateCategoryPayload[]) => {
+      const created = [];
+      for (const payload of payloads) {
+        created.push(await categoryApi.create(widgetId, payload));
+      }
+      return created;
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: categoriesKey(widgetId) });
+      toast.success(
+        created.length === 1
+          ? "Category created"
+          : `${created.length} categories added`
+      );
+    },
+    onError: (err: AxiosError<{ message: string }>) => {
+      queryClient.invalidateQueries({ queryKey: categoriesKey(widgetId) });
+      toast.error(err.response?.data?.message ?? "Failed to add starter categories");
+    },
+  });
+}
+
 export function useUpdateCategory(widgetId: number) {
   const queryClient = useQueryClient();
   return useMutation({
