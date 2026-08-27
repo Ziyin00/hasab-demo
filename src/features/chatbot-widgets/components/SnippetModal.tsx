@@ -22,7 +22,7 @@ interface SnippetModalProps {
 }
 
 /** Bump when widget script behavior changes — busts browser/CDN caches on embed pages. */
-const WIDGET_SCRIPT_VERSION = "20260822b";
+const WIDGET_SCRIPT_VERSION = "20260825a";
 
 /** CDN script URL — localhost copies use the patched script from /public. */
 export function getWidgetScriptSrc(origin?: string): string {

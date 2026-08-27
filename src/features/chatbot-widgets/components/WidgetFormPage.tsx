@@ -43,7 +43,7 @@ import {
   useCreateChatbotWidget,
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
-import { normalizeQuickPrompts } from "../utils/quickPrompts";
+import { prepareQuickPromptsForSave } from "../utils/quickPrompts";
 import {
   mergeWidgetTheme,
   normalizeWidgetSettings,
@@ -114,7 +114,6 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
     { code: "am", label: "Amharic" },
     { code: "om", label: "Oromo" },
   ],
-  quick_prompts: {},
   features: {
     audio_upload: false,
     tts: false,
@@ -139,7 +138,6 @@ function emptyForm(): FormState {
       ...DEFAULT_SETTINGS,
       languages: DEFAULT_SETTINGS.languages?.map((l) => ({ ...l })),
       features: { ...DEFAULT_SETTINGS.features },
-      quick_prompts: {},
     },
     chat_context_ids: [],
     rag_store_ids: [],
@@ -387,7 +385,8 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
       theme: mergeWidgetTheme(DEFAULT_THEME, payload.theme),
       settings: normalizeWidgetSettings({
         ...payload.settings,
-        quick_prompts: normalizeQuickPrompts(
+        // Preserve omit vs stored list — do not seed `{}` (that would hide built-ins in the editor).
+        quick_prompts: prepareQuickPromptsForSave(
           payload.settings?.quick_prompts,
           payload.settings?.languages
         ),
@@ -419,7 +418,7 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
         syncLauncherLabelFromTheme(
           {
             ...form.settings,
-            quick_prompts: normalizeQuickPrompts(
+            quick_prompts: prepareQuickPromptsForSave(
               form.settings?.quick_prompts,
               form.settings?.languages
             ),

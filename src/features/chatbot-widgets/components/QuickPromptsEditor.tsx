@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,13 +22,19 @@ import type {
 interface QuickPromptsEditorProps {
   languages: LanguageOption[];
   promptsByLang: QuickPromptsMultilingual;
+  /** True when showing seeded defaults (API omitted the key) — not persisted yet. */
+  usingBuiltInSeed: boolean;
   onChange: (next: QuickPromptsMultilingual) => void;
+  /** Omit quick_prompts so the widget falls back to built-in chips. */
+  onResetToDefaults: () => void;
 }
 
 export function QuickPromptsEditor({
   languages,
   promptsByLang,
+  usingBuiltInSeed,
   onChange,
+  onResetToDefaults,
 }: QuickPromptsEditorProps) {
   const tabs =
     languages.length > 0 ? languages : [{ code: "en", label: "English" }];
@@ -38,12 +44,13 @@ export function QuickPromptsEditor({
   const [draftPrompt, setDraftPrompt] = useState("");
   const [pendingRemoveIndex, setPendingRemoveIndex] = useState<number | null>(null);
 
-  // If active tab was removed, snap to first available
   const safeLang = tabs.some((t) => t.code === activeLang)
     ? activeLang
     : tabs[0]?.code ?? "en";
 
   const activePrompts: QuickPrompt[] = promptsByLang[safeLang] ?? [];
+  const langKeyMissing =
+    !usingBuiltInSeed && !Object.prototype.hasOwnProperty.call(promptsByLang, safeLang);
   const pendingPrompt =
     pendingRemoveIndex != null ? activePrompts[pendingRemoveIndex] : null;
 
@@ -79,11 +86,32 @@ export function QuickPromptsEditor({
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Configure chips <strong className="font-medium text-foreground">per language</strong>.
-        When a visitor switches language in the widget, matching prompts are shown. Missing
-        languages fall back to English, then built-in defaults.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-[11px] leading-relaxed text-muted-foreground max-w-xl">
+          Configure chips <strong className="font-medium text-foreground">per language</strong>.
+          Saving stores the full visible list for each language you edit (remaining defaults +
+          your chips). Empty list = no chips for that language. Missing language key = visitors
+          still see built-in chips.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 text-xs"
+          onClick={onResetToDefaults}
+          disabled={usingBuiltInSeed}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset to defaults
+        </Button>
+      </div>
+
+      {usingBuiltInSeed ? (
+        <p className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+          Showing built-in chips as a starting point. They are not saved until you add, edit, or
+          remove a chip (or otherwise change this list).
+        </p>
+      ) : null}
 
       {/* Language tabs */}
       <div className="flex flex-wrap gap-1 rounded-lg border bg-muted/30 p-1">
@@ -125,11 +153,15 @@ export function QuickPromptsEditor({
           <code className="font-mono text-[10px]">({safeLang})</code>
         </p>
 
-        {/* Existing prompts — editable */}
-        {activePrompts.length === 0 ? (
+        {langKeyMissing ? (
           <p className="text-xs italic text-muted-foreground">
-            No prompts for this language yet. Visitors will fall back to English or built-in
-            chips.
+            No custom list for this language — visitors see built-in chips. Add a chip to start a
+            custom list (defaults are not auto-copied).
+          </p>
+        ) : activePrompts.length === 0 ? (
+          <p className="text-xs italic text-muted-foreground">
+            No chips for this language. Saving an empty list hides chips for visitors in this
+            language.
           </p>
         ) : (
           <div className="space-y-2">

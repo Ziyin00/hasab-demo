@@ -151,20 +151,29 @@
     }
 
     function resolvePromptsForLang(rawPrompts, lang) {
-      var key = toLangKey(lang);
-      if (!rawPrompts) return null;
-      if (Array.isArray(rawPrompts)) {
-        return rawPrompts.length ? rawPrompts : null;
-      }
+      // Parity with platform resolveQuickPromptsForLang (chip.md):
+      // null/undefined → built-in defaults (return null)
+      // [] → no chips
+      // [{…}] → exactly that list (all languages)
+      // { en/am/om: […] } → that language's list; missing key → defaults; am:[] → none
+      if (rawPrompts == null) return null;
+      if (Array.isArray(rawPrompts)) return rawPrompts;
       if (typeof rawPrompts === 'object') {
-        var list = rawPrompts[lang]
-          || rawPrompts[key]
-          || (key === 'am' ? rawPrompts.amh : null)
-          || (key === 'om' ? rawPrompts.orm : null)
-          || rawPrompts.en
-          || rawPrompts.eng
-          || [];
-        return Array.isArray(list) && list.length ? list : null;
+        var key = toLangKey(lang);
+        var candidates = [key, lang];
+        if (key === 'am') candidates.push('amh');
+        if (key === 'om') candidates.push('orm');
+        if (key === 'en') candidates.push('eng');
+        var tried = {};
+        for (var i = 0; i < candidates.length; i++) {
+          var code = candidates[i];
+          if (tried[code]) continue;
+          tried[code] = true;
+          if (!Object.prototype.hasOwnProperty.call(rawPrompts, code)) continue;
+          var list = rawPrompts[code];
+          return Array.isArray(list) ? list : null;
+        }
+        return null;
       }
       return null;
     }
@@ -700,12 +709,10 @@
           label: lang.label || lang.code
         };
       });
-      var rawPrompts = settings.quick_prompts || [];
-      var multiLangPrompts = !Array.isArray(rawPrompts) && typeof rawPrompts === 'object' ? rawPrompts : null;
-      var legacyPrompts = Array.isArray(rawPrompts) && rawPrompts.length ? rawPrompts : null;
+      var rawPrompts = settings.quick_prompts;
       var language = getLanguage();
       var resolvedAdminPrompts = resolvePromptsForLang(rawPrompts, language);
-      var quickPrompts = resolvedAdminPrompts || chrome.prompts;
+      var quickPrompts = resolvedAdminPrompts !== null ? resolvedAdminPrompts : chrome.prompts;
       var showLanguageSelector = settings.show_language_selector !== false && features.language_selector !== false;
       var showAudio = features.audio_upload === true;
       var side = position.indexOf('left') >= 0 ? 'left' : 'right';
@@ -1063,15 +1070,9 @@
           subEl.innerHTML = '<span class="dot"></span>' + escapeHtml(subtitle);
         }
 
-        // Admin multilingual map → pick for lang; legacy array stays fixed;
-        // otherwise use built-in localized fallback prompts.
-        if (multiLangPrompts) {
-          quickPrompts = resolvePromptsForLang(multiLangPrompts, code) || resolved.prompts;
-        } else if (legacyPrompts) {
-          quickPrompts = legacyPrompts;
-        } else {
-          quickPrompts = resolved.prompts;
-        }
+        // Admin list (array or per-lang map) → resolve; null → built-in localized prompts.
+        var nextPrompts = resolvePromptsForLang(rawPrompts, code);
+        quickPrompts = nextPrompts !== null ? nextPrompts : resolved.prompts;
 
         renderMessages();
       }

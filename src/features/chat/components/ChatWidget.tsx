@@ -850,9 +850,10 @@ export function ChatWidget({
   );
 
   const resolvedPrompts = resolveQuickPromptsForLang(settings?.quick_prompts, lang);
-  const quickPromptItems = resolvedPrompts
-    ? resolvedPrompts.map((p) => ({ label: p.label, text: p.prompt }))
-    : ui.prompts.map((q) => ({ label: q, text: q }));
+  const quickPromptItems =
+    resolvedPrompts !== null
+      ? resolvedPrompts.map((p) => ({ label: p.label, text: p.prompt }))
+      : ui.prompts.map((q) => ({ label: q, text: q }));
 
   return (
     <div className={embedded ? "relative w-full h-full overflow-hidden" : "contents"}>

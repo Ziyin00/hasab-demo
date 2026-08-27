@@ -38,7 +38,7 @@ import {
   useCreateChatbotWidget,
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
-import { normalizeQuickPrompts } from "../utils/quickPrompts";
+import { prepareQuickPromptsForSave } from "../utils/quickPrompts";
 import {
   mergeWidgetTheme,
   normalizeWidgetSettings,
@@ -109,7 +109,6 @@ const DEFAULT_SETTINGS: ChatbotWidgetSettings = {
     { code: "am", label: "Amharic" },
     { code: "om", label: "Oromo" },
   ],
-  quick_prompts: {},
   features: {
     audio_upload: false,
     tts: false,
@@ -161,7 +160,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
         theme: mergeWidgetTheme(DEFAULT_THEME, payload.theme),
         settings: normalizeWidgetSettings({
           ...payload.settings,
-          quick_prompts: normalizeQuickPrompts(
+          quick_prompts: prepareQuickPromptsForSave(
             payload.settings?.quick_prompts,
             payload.settings?.languages
           ),
@@ -198,7 +197,7 @@ export function WidgetSheet({ open, onOpenChange, widget }: WidgetSheetProps) {
         syncLauncherLabelFromTheme(
           {
             ...form.settings,
-            quick_prompts: normalizeQuickPrompts(
+            quick_prompts: prepareQuickPromptsForSave(
               form.settings?.quick_prompts,
               form.settings?.languages
             ),

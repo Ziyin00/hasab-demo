@@ -10,7 +10,10 @@ import type {
   ChatbotWidgetSettings,
   QuickPromptsMultilingual,
 } from "../types/chatbot-widget.types";
-import { normalizeQuickPrompts } from "../utils/quickPrompts";
+import {
+  isQuickPromptsUnset,
+  quickPromptsForEditor,
+} from "../utils/quickPrompts";
 import { QuickPromptsEditor } from "./QuickPromptsEditor";
 
 interface SettingsEditorProps {
@@ -36,14 +39,23 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
   ) => onChange({ ...settings, features: { ...settings.features, [key]: val } });
 
   const languages = settings.languages ?? [];
+  const usingBuiltInSeed = isQuickPromptsUnset(settings.quick_prompts);
 
   const promptsByLang: QuickPromptsMultilingual = useMemo(
-    () => normalizeQuickPrompts(settings.quick_prompts, languages),
+    () => quickPromptsForEditor(settings.quick_prompts, languages),
     [settings.quick_prompts, languages]
   );
 
   const [langCode, setLangCode] = useState("");
   const [langLabel, setLangLabel] = useState("");
+
+  const commitPrompts = (next: QuickPromptsMultilingual) => {
+    onChange({
+      ...settings,
+      quick_prompts: next,
+      features: { ...settings.features, quick_prompts: true },
+    });
+  };
 
   const addLanguage = () => {
     const code = langCode.trim();
@@ -51,23 +63,26 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
     if (!code || !label) return;
     if (languages.some((l) => l.code === code)) return;
 
+    // Do not invent `code: []` — missing key keeps built-in chips for that language.
     onChange({
       ...settings,
       languages: [...languages, { code, label }],
-      quick_prompts: { ...promptsByLang, [code]: promptsByLang[code] ?? [] },
     });
     setLangCode("");
     setLangLabel("");
   };
 
   const removeLanguage = (code: string) => {
-    const nextPrompts = { ...promptsByLang };
-    delete nextPrompts[code];
-    onChange({
+    const next: ChatbotWidgetSettings = {
       ...settings,
       languages: languages.filter((l) => l.code !== code),
-      quick_prompts: nextPrompts,
-    });
+    };
+    if (!usingBuiltInSeed) {
+      const nextPrompts = { ...promptsByLang };
+      delete nextPrompts[code];
+      next.quick_prompts = nextPrompts;
+    }
+    onChange(next);
   };
 
   return (
@@ -236,7 +251,13 @@ export function SettingsEditor({ settings, onChange }: SettingsEditorProps) {
         <QuickPromptsEditor
           languages={languages}
           promptsByLang={promptsByLang}
-          onChange={(next) => set("quick_prompts", next)}
+          usingBuiltInSeed={usingBuiltInSeed}
+          onChange={commitPrompts}
+          onResetToDefaults={() => {
+            const next = { ...settings };
+            delete next.quick_prompts;
+            onChange(next);
+          }}
         />
       </div>
     </div>

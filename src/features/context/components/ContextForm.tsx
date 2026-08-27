@@ -66,6 +66,8 @@ interface Props {
 
 export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
   const [form, setForm] = useState<ContextFormData>(DEFAULT_FORM);
+  /** Raw digits while typing — empty allowed so we never force a leading 0. */
+  const [priorityInput, setPriorityInput] = useState(String(DEFAULT_FORM.priority));
   const [loadingFile, setLoadingFile] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,16 +100,47 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
 
   useEffect(() => {
     if (editingContext) {
+      const priority = Math.min(
+        200,
+        Math.max(0, Number(editingContext.priority) || 0)
+      );
       setForm({
         name: editingContext.name,
-        priority: Number(editingContext.priority) || 0,
+        priority,
         is_active: editingContext.is_active,
         context_data: editingContext.context_data,
       });
+      setPriorityInput(String(priority));
     } else {
       setForm(DEFAULT_FORM);
+      setPriorityInput(String(DEFAULT_FORM.priority));
     }
   }, [editingContext]);
+
+  const setPriority = (value: number) => {
+    const priority = Math.min(200, Math.max(0, value));
+    setForm((p) => ({ ...p, priority }));
+    setPriorityInput(String(priority));
+  };
+
+  const handlePriorityChange = (raw: string) => {
+    // Digits only; strip leading zeros so "08" becomes "8" (lone "0" stays).
+    let digits = raw.replace(/\D/g, "");
+    if (digits.length > 1) digits = digits.replace(/^0+/, "");
+    if (digits === "") {
+      setPriorityInput("");
+      return;
+    }
+    const n = Math.min(200, Math.max(0, Number(digits)));
+    setPriorityInput(String(n));
+    setForm((p) => ({ ...p, priority: n }));
+  };
+
+  const handlePriorityBlur = () => {
+    const n = Math.min(200, Math.max(0, Number(priorityInput) || 0));
+    setForm((p) => ({ ...p, priority: n }));
+    setPriorityInput(String(n));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +150,7 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
       ...form,
       name: form.name.trim(),
       context_data: form.context_data.trim(),
-      priority: Number(form.priority),
+      priority: Math.min(200, Math.max(0, Number(priorityInput) || Number(form.priority) || 0)),
     };
 
     if (editingContext) {
@@ -247,18 +280,15 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
             </TooltipProvider>
           </div>
           <Input
-            type="number"
-            min={0}
-            max={200}
-            value={Number(form.priority) || 0}
-            onChange={(e) =>
-              setForm((p) => ({
-                ...p,
-                priority: Math.min(200, Math.max(0, Number(e.target.value) || 0)),
-              }))
-            }
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={priorityInput}
+            onChange={(e) => handlePriorityChange(e.target.value)}
+            onBlur={handlePriorityBlur}
             disabled={!apiKey}
             className="h-6 w-14 text-xs text-center px-1 font-mono"
+            aria-label="Priority"
           />
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -267,7 +297,7 @@ export function ContextForm({ apiKey, editingContext, onCancelEdit }: Props) {
               key={preset.value}
               type="button"
               disabled={!apiKey}
-              onClick={() => setForm((p) => ({ ...p, priority: preset.value }))}
+              onClick={() => setPriority(preset.value)}
               className={`py-1.5 text-xs rounded-md border transition-all ${
                 Number(form.priority) === preset.value
                   ? "border-primary bg-primary/10 text-primary font-semibold"

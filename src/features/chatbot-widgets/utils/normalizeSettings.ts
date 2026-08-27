@@ -5,7 +5,7 @@ import type {
   WidgetFeatures,
 } from "../types/chatbot-widget.types";
 import { normalizeUiLanguageCode } from "./languageCodes";
-import { normalizeQuickPromptKeys } from "./quickPrompts";
+import { isQuickPromptsUnset, normalizeQuickPromptKeys } from "./quickPrompts";
 
 /**
  * CDN embed + public config expect an explicit features object
@@ -73,12 +73,21 @@ export function normalizeWidgetSettings(
   const s = settings ?? {};
   const languages = normalizeLanguages(s.languages?.map(normalizeLanguageOption));
 
-  return {
+  const next: ChatbotWidgetSettings = {
     ...s,
     languages,
-    quick_prompts: normalizeQuickPromptKeys(s.quick_prompts),
     features: normalizeWidgetFeatures(s.features),
   };
+
+  // Leave quick_prompts out of data-settings unless a custom list is stored.
+  // Omitted / {} → CDN built-ins. Explicit [] or per-lang map is preserved.
+  if (!isQuickPromptsUnset(s.quick_prompts)) {
+    next.quick_prompts = normalizeQuickPromptKeys(s.quick_prompts);
+  } else {
+    delete next.quick_prompts;
+  }
+
+  return next;
 }
 
 /**

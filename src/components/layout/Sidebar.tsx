@@ -152,7 +152,33 @@ export function AppSidebar() {
       <SidebarHeader className="relative border-b p-4 group-data-[collapsible=icon]:p-2">
         {!isCollapsed || isMobile ? (
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="flex min-w-0 items-center gap-2 rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Image
+                src="/hasab_ai.png"
+                alt="Hasab AI"
+                width={28}
+                height={28}
+                className="size-7 shrink-0 rounded-md"
+              />
+              <div className="min-w-0">
+                <p className="text-sm leading-tight font-bold">Hasab AI</p>
+                <p className="text-[10px] tracking-widest text-muted-foreground uppercase">
+                  Chat Dashboard
+                </p>
+              </div>
+            </Link>
+            <SidebarTrigger className="-mr-2" />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4">
+            <Link
+              href="/"
+              className="rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
+              title="Home"
+            >
               <Image
                 src="/hasab_ai.png"
                 alt="Hasab AI"
@@ -160,24 +186,7 @@ export function AppSidebar() {
                 height={28}
                 className="size-7 rounded-md"
               />
-              <div>
-                <p className="text-sm leading-tight font-bold">Hasab AI</p>
-                <p className="text-[10px] tracking-widest text-muted-foreground uppercase">
-                  Chat Dashboard
-                </p>
-              </div>
-            </div>
-            <SidebarTrigger className="-mr-2" />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4">
-            <Image
-              src="/hasab_ai.png"
-              alt="Hasab AI"
-              width={28}
-              height={28}
-              className="size-7 rounded-md"
-            />
+            </Link>
             <SidebarTrigger />
           </div>
         )}
