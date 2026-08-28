@@ -8,11 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useChatbotWidgets } from "../hooks/useChatbotWidgets";
 import { WidgetCard } from "./WidgetCard";
 import { SnippetModal } from "./SnippetModal";
+import { ChannelLimitBanner } from "@/features/channel-limit/components/ChannelLimitBanner";
+import { canCreateChannel, useChannelLimit } from "@/features/channel-limit/hooks/useChannelLimit";
 import type { ChatbotWidget } from "../types/chatbot-widget.types";
 
 export function ChatbotWidgetsPage() {
   const router = useRouter();
   const { data: widgets, isLoading } = useChatbotWidgets();
+  const { data: channelLimit } = useChannelLimit();
+  const canCreate = canCreateChannel(channelLimit);
   const [snippetWidget, setSnippetWidget] = useState<ChatbotWidget | null>(null);
 
   return (
@@ -26,11 +30,18 @@ export function ChatbotWidgetsPage() {
             to paste on any webpage.
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/widgets/new")} className="shrink-0 gap-2">
+        <Button
+          onClick={() => router.push("/dashboard/widgets/new")}
+          className="shrink-0 gap-2"
+          disabled={!canCreate}
+          title={!canCreate ? "Channel limit reached" : undefined}
+        >
           <Plus className="h-4 w-4" />
           New Widget
         </Button>
       </div>
+
+      <ChannelLimitBanner />
 
       {/* How it works */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -84,7 +95,11 @@ export function ChatbotWidgetsPage() {
               Create your first chatbot widget to get an embed snippet.
             </p>
           </div>
-          <Button onClick={() => router.push("/dashboard/widgets/new")} className="gap-2">
+          <Button
+            onClick={() => router.push("/dashboard/widgets/new")}
+            className="gap-2"
+            disabled={!canCreate}
+          >
             <Plus className="h-4 w-4" />
             Create Widget
           </Button>

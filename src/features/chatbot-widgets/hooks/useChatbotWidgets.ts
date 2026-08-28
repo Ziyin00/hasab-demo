@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { AxiosError } from "axios";
 import { useAuthStore } from "@/store/auth.store";
+import { CHANNEL_LIMIT_KEY } from "@/features/channel-limit/hooks/useChannelLimit";
+import { channelLimitErrorMessage } from "@/features/channel-limit/utils/limitErrors";
 import { chatbotWidgetApi } from "../api/chatbot-widget.api";
 import type {
   CreateChatbotWidgetPayload,
@@ -36,10 +38,11 @@ export function useCreateChatbotWidget() {
     mutationFn: (payload: CreateChatbotWidgetPayload) => chatbotWidgetApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WIDGETS_KEY });
+      queryClient.invalidateQueries({ queryKey: CHANNEL_LIMIT_KEY });
       toast.success("Widget created");
     },
     onError: (err: AxiosError<{ message: string }>) => {
-      toast.error(err.response?.data?.message ?? "Failed to create widget");
+      toast.error(channelLimitErrorMessage(err, err.response?.data?.message ?? "Failed to create widget"));
     },
   });
 }
@@ -65,6 +68,7 @@ export function useDeleteChatbotWidget() {
     mutationFn: (id: number) => chatbotWidgetApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WIDGETS_KEY });
+      queryClient.invalidateQueries({ queryKey: CHANNEL_LIMIT_KEY });
       toast.success("Widget deleted");
     },
     onError: (err: AxiosError<{ message: string }>) => {
