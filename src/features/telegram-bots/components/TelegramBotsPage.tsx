@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTelegramBots } from "../hooks/useTelegramBots";
 import { TelegramBotCard } from "./TelegramBotCard";
+import { ChannelLimitBanner } from "@/features/channel-limit/components/ChannelLimitBanner";
+import { canCreateChannel, useChannelLimit } from "@/features/channel-limit/hooks/useChannelLimit";
 
 export function TelegramBotsPage() {
   const router = useRouter();
   const { data, isLoading } = useTelegramBots();
+  const { data: channelLimit } = useChannelLimit();
+  const canCreate = canCreateChannel(channelLimit);
   const bots = data?.bots ?? [];
 
   return (
@@ -25,11 +29,15 @@ export function TelegramBotsPage() {
         <Button
           onClick={() => router.push("/dashboard/telegram-bots/new")}
           className="shrink-0 gap-2"
+          disabled={!canCreate}
+          title={!canCreate ? "Channel limit reached" : undefined}
         >
           <Plus className="h-4 w-4" />
           New Bot
         </Button>
       </div>
+
+      <ChannelLimitBanner />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex items-start gap-3 rounded-xl border bg-muted/20 px-4 py-3">
@@ -84,6 +92,7 @@ export function TelegramBotsPage() {
           <Button
             onClick={() => router.push("/dashboard/telegram-bots/new")}
             className="gap-2"
+            disabled={!canCreate}
           >
             <Plus className="h-4 w-4" />
             Create Bot

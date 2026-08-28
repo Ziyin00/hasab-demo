@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { AxiosError } from "axios";
+import { CHANNEL_LIMIT_KEY } from "@/features/channel-limit/hooks/useChannelLimit";
+import { channelLimitErrorMessage } from "@/features/channel-limit/utils/limitErrors";
 import { telegramBotApi } from "../api/telegram-bot.api";
 import type {
   CreateTelegramBotPayload,
@@ -47,10 +49,11 @@ export function useCreateTelegramBot() {
     mutationFn: (payload: CreateTelegramBotPayload) => telegramBotApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOTS_KEY });
+      queryClient.invalidateQueries({ queryKey: CHANNEL_LIMIT_KEY });
       toast.success("Telegram bot created");
     },
     onError: (err: AxiosError<{ message?: string }>) => {
-      toast.error(errMessage(err, "Failed to create bot"));
+      toast.error(channelLimitErrorMessage(err, errMessage(err, "Failed to create bot")));
     },
   });
 }
@@ -78,6 +81,7 @@ export function useDeleteTelegramBot() {
     mutationFn: (id: number) => telegramBotApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOTS_KEY });
+      queryClient.invalidateQueries({ queryKey: CHANNEL_LIMIT_KEY });
       toast.success("Bot deleted");
     },
     onError: (err: AxiosError<{ message?: string }>) => {

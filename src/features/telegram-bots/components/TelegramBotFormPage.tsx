@@ -58,6 +58,8 @@ import { botProfilePhotoUrl, isHttpsUrl, miniAppUrlError, timeAgo } from "../uti
 import { cn } from "@/lib/utils";
 import { AccessEditor } from "./AccessEditor";
 import { CommandsEditor } from "./CommandsEditor";
+import { ChannelLimitBanner } from "@/features/channel-limit/components/ChannelLimitBanner";
+import { canCreateChannel, useChannelLimit } from "@/features/channel-limit/hooks/useChannelLimit";
 
 const MODES: { label: string; value: TelegramBotMode; hint: string }[] = [
   { label: "Chat", value: "chat", hint: "Native Telegram chat only" },
@@ -448,6 +450,8 @@ interface TelegramBotFormPageProps {
 export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) {
   const router = useRouter();
   const isEdit = !!bot;
+  const { data: channelLimit } = useChannelLimit();
+  const canCreate = canCreateChannel(channelLimit);
 
   const { mutate: create, isPending: creating } = useCreateTelegramBot();
   const { mutate: update, isPending: updating } = useUpdateTelegramBot();
@@ -675,7 +679,7 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
           </Button>
           <Button
             className="gap-2"
-            disabled={isPending || (isEdit ? false : !form.bot_token.trim())}
+            disabled={isPending || (isEdit ? false : !form.bot_token.trim() || !canCreate)}
             onClick={() => (isEdit ? handleUpdate() : handleCreate())}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -683,6 +687,8 @@ export function TelegramBotFormPage({ bot, loading }: TelegramBotFormPageProps) 
           </Button>
         </div>
       </div>
+
+      {!isEdit ? <ChannelLimitBanner /> : null}
 
       {!isEdit ? (
         <div className="rounded-xl border bg-card">

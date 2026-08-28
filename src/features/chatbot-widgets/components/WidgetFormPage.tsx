@@ -43,6 +43,8 @@ import {
   useCreateChatbotWidget,
   useUpdateChatbotWidget,
 } from "../hooks/useChatbotWidgets";
+import { ChannelLimitBanner } from "@/features/channel-limit/components/ChannelLimitBanner";
+import { canCreateChannel, useChannelLimit } from "@/features/channel-limit/hooks/useChannelLimit";
 import { prepareQuickPromptsForSave } from "../utils/quickPrompts";
 import {
   mergeWidgetTheme,
@@ -365,6 +367,8 @@ interface WidgetFormPageProps {
 export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
   const router = useRouter();
   const isEdit = !!widget;
+  const { data: channelLimit } = useChannelLimit();
+  const canCreate = canCreateChannel(channelLimit);
 
   const { mutate: create, isPending: creating } = useCreateChatbotWidget();
   const { mutate: update, isPending: updating } = useUpdateChatbotWidget();
@@ -488,7 +492,7 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
           </Button>
           <Button
             className="gap-2"
-            disabled={isPending || !form.name.trim()}
+            disabled={isPending || !form.name.trim() || (!isEdit && !canCreate)}
             onClick={handleSave}
           >
             {isPending ? (
@@ -500,6 +504,8 @@ export function WidgetFormPage({ widget, loading }: WidgetFormPageProps) {
           </Button>
         </div>
       </div>
+
+      {!isEdit ? <ChannelLimitBanner /> : null}
 
       {!isEdit ? (
         <div className="rounded-xl border bg-card">
