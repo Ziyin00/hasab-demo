@@ -24,6 +24,7 @@ import {
   Stagger,
   StaggerItem,
 } from "@/features/landing/components/LandingMotion";
+import { cn } from "@/lib/utils";
 import "./../landing.css";
 
 const CONTACT_EMAIL = "contact@hasab.ai";
@@ -102,14 +103,14 @@ export function LandingPage() {
       />
 
       {/* Platform — three channel cards */}
-      <section id="platform" className="border-b border-[var(--lp-border)] py-20 sm:py-24">
+      <section id="platform" className="lp-section border-b border-[var(--lp-border)]">
         <div className="mx-auto max-w-6xl px-6 sm:px-8">
           <Reveal className="max-w-2xl">
             <p className="lp-section-label">Core platform</p>
-            <h2 className="mt-3 text-balance text-3xl font-medium tracking-tight sm:text-4xl lg:text-5xl">
+            <h2 className="mt-3 text-balance text-3xl tracking-tight sm:text-4xl lg:text-5xl">
               Three channels. One system of record.
             </h2>
-            <p className="mt-5 max-w-xl leading-relaxed text-[var(--lp-muted-fg)]">
+            <p className="lp-prose mt-5 max-w-xl leading-relaxed text-[var(--lp-muted-fg)]">
               Most teams end up with a website FAQ, a Telegram bot someone built, and a call-centre
               script — all saying slightly different things. Hasab collapses them into one curated
               knowledge base.
@@ -121,21 +122,23 @@ export function LandingPage() {
               const Icon = channel.icon;
               return (
                 <StaggerItem key={channel.title}>
-                  <article className="lp-channel-card flex h-full flex-col border border-white/10 bg-black p-6 text-white sm:p-7">
-                    <span className="flex size-11 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--lp-brand)_22%,transparent)] text-[#c084fc]">
+                  <article className="lp-channel-card flex h-full flex-col border p-6 sm:p-7">
+                    <span className="lp-channel-icon flex size-11 items-center justify-center">
                       <Icon className="size-5" />
                     </span>
-                    <h3 className="mt-5 text-lg font-medium tracking-tight text-white">{channel.title}</h3>
-                    <p className="mt-3 flex-1 text-sm leading-relaxed text-white/60">
+                    <h3 className="mt-5 text-lg font-medium tracking-tight text-[var(--lp-channel-fg)]">
+                      {channel.title}
+                    </h3>
+                    <p className="lp-prose mt-3 flex-1 text-sm leading-relaxed text-[var(--lp-channel-muted)]">
                       {channel.body}
                     </p>
-                    <ul className="mt-6 space-y-2 border-t border-white/10 pt-5">
+                    <ul className="mt-6 space-y-2 border-t border-[var(--lp-channel-border)] pt-5">
                       {channel.points.map((point) => (
                         <li
                           key={point}
-                          className="flex items-center gap-2.5 text-sm text-white/90"
+                          className="flex items-center gap-2.5 text-sm text-[var(--lp-channel-fg)]"
                         >
-                          <span className="size-1.5 shrink-0 rounded-full bg-primary-gradient" />
+                          <span className="size-1.5 shrink-0 rounded-full bg-[var(--lp-brand)]" />
                           {point}
                         </li>
                       ))}
@@ -149,14 +152,14 @@ export function LandingPage() {
       </section>
 
       {/* Languages */}
-      <section id="languages" className="border-b border-[var(--lp-border)] bg-[var(--lp-secondary)] py-20 sm:py-24">
+      <section id="languages" className="lp-section border-b border-[var(--lp-border)] bg-[var(--lp-secondary)]">
         <div className="mx-auto grid max-w-6xl gap-14 px-6 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:items-start">
           <RevealLeft>
             <p className="lp-section-label">Languages</p>
-            <h2 className="mt-3 text-balance text-3xl font-medium tracking-tight sm:text-4xl">
+            <h2 className="mt-3 text-balance text-3xl tracking-tight sm:text-4xl">
               Multilingual by design, not by translation layer.
             </h2>
-            <p className="mt-5 leading-relaxed text-[var(--lp-muted-fg)]">
+            <p className="lp-prose mt-5 leading-relaxed text-[var(--lp-muted-fg)]">
               We build for Amharic and Afaan Oromo first — on the continent, with African language
               data — not as a locale bolted onto an English product. The assistant detects each message
               and replies in kind, including when a user switches mid-conversation.
@@ -183,9 +186,16 @@ export function LandingPage() {
                         auto
                       </span>
                     </span>
-                    <span className="text-xs font-medium text-[var(--lp-brand)]">{row.native}</span>
+                    <span className="text-xs font-medium text-[var(--lp-brand)]">
+                      <span className={row.code === "am" ? "lp-fidel" : undefined}>{row.native}</span>
+                    </span>
                   </div>
-                  <p className="mt-4 font-ethiopic text-lg leading-relaxed text-[var(--lp-ink)] sm:text-xl">
+                  <p
+                    className={cn(
+                      "mt-4 text-lg leading-relaxed text-[var(--lp-ink)] sm:text-xl",
+                      row.code === "am" && "lp-fidel font-ethiopic"
+                    )}
+                  >
                     {row.text}
                   </p>
                 </div>
@@ -200,14 +210,14 @@ export function LandingPage() {
       <CompanySection />
 
       {/* Contact */}
-      <section id="demo" className="py-20 sm:py-24">
+      <section id="demo" className="lp-section">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:items-start">
           <RevealLeft>
             <p className="lp-section-label">Contact</p>
-            <h2 className="mt-3 text-balance text-3xl font-medium tracking-tight sm:text-4xl">
+            <h2 className="mt-3 text-balance text-3xl tracking-tight sm:text-4xl">
               Let&apos;s talk about your deployment.
             </h2>
-            <p className="mt-5 max-w-md leading-relaxed text-[var(--lp-muted-fg)]">
+            <p className="lp-prose mt-5 max-w-md leading-relaxed text-[var(--lp-muted-fg)]">
               Tell us the channels and languages you need. We&apos;ll show you a working system —
               and give you a straight answer on cost and timeline.
             </p>

@@ -49,7 +49,8 @@ export function HeroChatPreview() {
             className={cn(
               "lp-lang-pill rounded-full px-3.5 py-1.5 text-[12px] font-medium",
               "border border-[var(--lp-border)] text-[var(--lp-muted-fg)]",
-              "transition-colors hover:text-[var(--lp-ink)]"
+              "transition-colors hover:text-[var(--lp-ink)]",
+              code !== "en" && "lp-fidel text-[11px]"
             )}
             onClick={() => setLang(code)}
           >
@@ -71,8 +72,8 @@ export function HeroChatPreview() {
             <p className="text-sm font-semibold text-[var(--lp-ink)]">Hasab Assistant</p>
             <p className="text-[11px] text-[var(--lp-muted-fg)]">{demo.label} selected</p>
           </div>
-          <span className="rounded-md bg-[color-mix(in_oklab,var(--lp-brand)_14%,transparent)] px-2 py-0.5 text-[10px] font-medium text-[var(--lp-brand)]">
-            {demo.native}
+          <span className="rounded-md bg-[color-mix(in_oklab,var(--lp-brand)_12%,transparent)] px-2 py-0.5 text-[10px] font-medium text-[var(--lp-brand)]">
+            <span className={lang !== "en" ? "lp-fidel text-[9px]" : undefined}>{demo.native}</span>
           </span>
         </div>
 
@@ -94,11 +95,19 @@ export function HeroChatPreview() {
               }
               transition={{ duration: 0.4, ease: EASE_SMOOTH }}
             >
-              <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-primary-gradient px-4 py-3 text-[13px] leading-relaxed text-white">
-                {demo.user}
+              <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[var(--lp-brand)] px-4 py-3 text-[13px] leading-relaxed text-white">
+                <span
+                  className={
+                    lang !== "en"
+                      ? "font-ethiopic text-[0.8125em] font-normal leading-relaxed text-white/95"
+                      : undefined
+                  }
+                >
+                  {demo.user}
+                </span>
               </div>
               <div className="max-w-[90%] rounded-2xl rounded-bl-md border border-[var(--lp-border)] bg-[var(--lp-secondary)] px-4 py-3 text-[13px] leading-relaxed text-[var(--lp-ink)]">
-                {demo.bot}
+                <span className={lang !== "en" ? "lp-fidel" : undefined}>{demo.bot}</span>
               </div>
             </motion.div>
           </AnimatePresence>
@@ -109,7 +118,7 @@ export function HeroChatPreview() {
             Type a message…
           </div>
           <div
-            className="flex size-10 items-center justify-center rounded-full bg-primary-gradient"
+            className="flex size-10 items-center justify-center rounded-full bg-[var(--lp-brand)]"
             aria-label="Voice record"
           >
             <Mic className="size-4 text-white" />

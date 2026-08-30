@@ -32,8 +32,8 @@ export default function HasabHero({ themeToggle, navExtra }: HasabHeroProps) {
       {!reduceMotion ? (
         <motion.div
           aria-hidden
-          className="pointer-events-none absolute -right-24 top-0 size-96 rounded-full bg-primary-gradient opacity-[0.07] blur-3xl"
-          animate={{ scale: [1, 1.08, 1], opacity: [0.06, 0.1, 0.06] }}
+          className="pointer-events-none absolute -right-24 top-0 size-96 rounded-full bg-[color-mix(in_oklab,var(--lp-brand)_8%,transparent)] opacity-40 blur-3xl"
+          animate={{ scale: [1, 1.06, 1], opacity: [0.35, 0.5, 0.35] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
       ) : null}
@@ -42,14 +42,14 @@ export default function HasabHero({ themeToggle, navExtra }: HasabHeroProps) {
         <LandingHeader themeToggle={themeToggle} navExtra={navExtra} />
 
         <main id="top" className="pb-16 pt-10 sm:pb-24 sm:pt-14">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            <div className="max-w-2xl">
+          <div className="grid items-end gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
+            <div className="max-w-2xl lg:pb-1">
               <HeroReveal delay={0.05}>
                 <HeroRotatingHeadline />
               </HeroReveal>
 
               <HeroReveal delay={0.22}>
-                <p className="mt-6 max-w-lg text-pretty text-base leading-[1.75] text-[var(--lp-hero-body)] sm:text-lg">
+                <p className="lp-prose mt-6 max-w-lg text-pretty text-[0.9375rem] leading-[1.75] text-[var(--lp-hero-body)] sm:text-base">
                   One assistant and one knowledge base for web chat, Telegram, and voice — in
                   Amharic, Afaan Oromo, and English. Your team writes the answers; Hasab delivers
                   them on every channel.
@@ -57,21 +57,18 @@ export default function HasabHero({ themeToggle, navExtra }: HasabHeroProps) {
               </HeroReveal>
 
               <HeroReveal delay={0.38}>
-                <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <Link href={startHref} className="lp-btn-primary">
-                    Get started
+                <div className="mt-10 flex flex-wrap items-center gap-3">
+                  <Link href="/#demo" className="lp-btn-primary">
+                    Book a demo
                   </Link>
-                  <Link
-                    href="/how-it-works"
-                    className="text-sm font-medium text-[var(--lp-hero-fg)] underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
-                  >
-                    See how it works
+                  <Link href={startHref} className="lp-btn-secondary">
+                    Get started
                   </Link>
                 </div>
               </HeroReveal>
             </div>
 
-            <HeroReveal delay={0.2} className="justify-self-center lg:justify-self-end">
+            <HeroReveal delay={0.2} className="w-full justify-self-center lg:justify-self-end">
               <HeroChatPreview />
             </HeroReveal>
           </div>
@@ -112,22 +109,14 @@ export function NavCta({
   mounted: boolean;
   authenticated: boolean;
 }) {
-  if (mounted && authenticated) {
-    return (
-      <Link
-        href="/dashboard"
-        className="text-sm font-medium text-[var(--lp-hero-fg)] underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
-      >
-        Dashboard
-      </Link>
-    );
-  }
+  const startHref = mounted && authenticated ? "/dashboard" : "/login";
+
   return (
     <a
-      href="#demo"
-      className="text-sm font-medium text-[var(--lp-hero-fg)] underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
+      href={startHref}
+      className="text-sm font-medium text-[var(--lp-hero-muted)] underline-offset-4 transition-colors hover:text-[var(--lp-hero-fg)] hover:underline"
     >
-      Book a demo
+      {mounted && authenticated ? "Dashboard" : "Get started"}
     </a>
   );
 }

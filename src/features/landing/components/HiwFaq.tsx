@@ -36,7 +36,7 @@ const FAQ_ITEMS = [
 
 export function HiwFaq() {
   return (
-    <section className="border-b border-[var(--lp-border)] py-16 sm:py-20">
+    <section className="lp-section border-b border-[var(--lp-border)]">
       <div className="mx-auto max-w-3xl px-6 sm:px-8">
         <Reveal className="mb-10 text-center">
           <p className="lp-section-label">FAQ</p>

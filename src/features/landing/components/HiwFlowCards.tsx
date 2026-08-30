@@ -173,7 +173,7 @@ const MOCKS = {
 
 export function HiwFlowCards() {
   return (
-    <section className="border-b border-[var(--lp-border)] py-16 sm:py-24">
+    <section className="lp-section border-b border-[var(--lp-border)]">
       <div className="mx-auto max-w-6xl px-6 sm:px-8">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="lp-section-label">The flow</p>
