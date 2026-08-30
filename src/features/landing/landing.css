@@ -44,6 +44,14 @@
   --lp-hero-toggle-border: rgba(22, 11, 34, 0.15);
   --lp-hero-toggle-fg: #6b5a7a;
 
+  --lp-channel-bg: #000000;
+  --lp-channel-border: rgba(255, 255, 255, 0.1);
+  --lp-channel-fg: #ffffff;
+  --lp-channel-muted: rgba(255, 255, 255, 0.6);
+  --lp-channel-icon-bg: rgba(255, 255, 255, 0.05);
+  --lp-channel-icon-fg: rgba(255, 255, 255, 0.5);
+  --lp-channel-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+
   --font-display: var(--font-landing-display), var(--font-landing-ethiopic), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-landing-body), var(--font-landing-ethiopic), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-landing-mono), ui-monospace, monospace;
@@ -95,6 +103,14 @@ html.dark .landing {
   --lp-hero-outline-hover: rgba(247, 244, 251, 0.35);
   --lp-hero-toggle-border: rgba(247, 244, 251, 0.15);
   --lp-hero-toggle-fg: #c9b8dc;
+
+  --lp-channel-bg: #000000;
+  --lp-channel-border: rgba(255, 255, 255, 0.1);
+  --lp-channel-fg: #ffffff;
+  --lp-channel-muted: rgba(255, 255, 255, 0.58);
+  --lp-channel-icon-bg: rgba(255, 255, 255, 0.05);
+  --lp-channel-icon-fg: rgba(255, 255, 255, 0.5);
+  --lp-channel-shadow: none;
 }
 
 .landing .font-display {
@@ -106,7 +122,45 @@ html.dark .landing {
 }
 
 .landing .font-ethiopic {
+  font-family: var(--font-landing-ethiopic), var(--font-body);
+}
+
+/* Ge'ez / Fidel — lighter & smaller vs adjacent Latin */
+.landing .lp-fidel {
+  font-family: var(--font-landing-ethiopic), var(--font-body);
+  font-weight: 400;
+  font-size: 0.875em;
+  line-height: 1.65;
+  color: color-mix(in oklab, var(--lp-ink) 68%, transparent);
+}
+
+html.dark .landing .lp-fidel {
+  color: color-mix(in oklab, var(--lp-ink) 78%, transparent);
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.landing p,
+.landing li,
+.landing .lp-prose {
   font-family: var(--font-body);
+  font-weight: 400;
+}
+
+.lp-section {
+  padding-block: 6rem;
+}
+
+@media (min-width: 640px) {
+  .lp-section {
+    padding-block: 7rem;
+  }
 }
 
 .lp-label {
@@ -169,23 +223,51 @@ html.dark .landing {
   padding: 0.6875rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 500;
-  background-image: var(--lp-brand-grad);
+  font-family: var(--font-body);
+  background: var(--lp-brand);
   color: #fff;
+  border: 1px solid transparent;
   transition:
     transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.2s ease,
+    background 0.2s ease,
     box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .lp-btn-primary:hover {
-  opacity: 1;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 28px color-mix(in oklab, var(--lp-brand) 28%, transparent);
+  background: color-mix(in oklab, var(--lp-brand) 88%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px color-mix(in oklab, var(--lp-brand) 22%, transparent);
 }
 
 .lp-btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px color-mix(in oklab, var(--lp-brand) 18%, transparent);
+  box-shadow: none;
+}
+
+.lp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6875rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-body);
+  color: var(--lp-hero-fg);
+  background: transparent;
+  border: 1px solid var(--lp-hero-outline);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.lp-btn-secondary:hover {
+  border-color: var(--lp-hero-outline-hover);
+  background: color-mix(in oklab, var(--lp-hero-fg) 5%, transparent);
+}
+
+.lp-btn-secondary:active {
+  transform: translateY(0);
 }
 
 .lp-hero-btn-outline {
@@ -569,6 +651,20 @@ html.dark .landing {
 }
 
 /* Channel / admin cards (non-hero sections) */
+.lp-channel-card {
+  background: var(--lp-channel-bg);
+  border-color: var(--lp-channel-border);
+  color: var(--lp-channel-fg);
+  border-radius: 0;
+  box-shadow: var(--lp-channel-shadow);
+}
+
+.lp-channel-card .lp-channel-icon {
+  background: var(--lp-channel-icon-bg);
+  color: var(--lp-channel-icon-fg);
+  border-radius: 0;
+}
+
 .lp-channel-card,
 .lp-admin-card,
 .lp-lang-sample {

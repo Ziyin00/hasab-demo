@@ -45,16 +45,12 @@ const DEFAULT_PRODUCTS: ProductCardItem[] = [
 function ProductCard({ name, icon: Icon }: Omit<ProductCardItem, "id">) {
   return (
     <motion.div variants={staggerItem} whileHover={cardHover}>
-      <Card className="group relative flex h-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--lp-border)] bg-black p-0 shadow-none ring-0 transition-colors hover:border-[#7C20D0]/40">
-        <div className="flex size-full flex-col items-center justify-center gap-2">
-          <motion.div
-            className="flex h-10 w-10 items-center justify-center rounded-md text-[var(--lp-muted-fg)] transition-colors group-hover:text-[#7C20D0]"
-            whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
-            transition={{ duration: 0.45 }}
-          >
-            <Icon className="text-2xl" />
-          </motion.div>
-          <span className="text-sm font-semibold tracking-tight text-[var(--lp-ink)]">
+      <Card className="lp-channel-card group relative flex h-24 items-center justify-center overflow-hidden border p-0 shadow-none ring-0 transition-colors hover:border-[color-mix(in_oklab,var(--lp-brand)_35%,var(--lp-channel-border))]">
+        <div className="flex size-full flex-col items-center justify-center gap-2 px-2">
+          <span className="lp-channel-icon flex size-10 items-center justify-center">
+            <Icon className="text-xl" />
+          </span>
+          <span className="text-sm font-medium tracking-tight text-[var(--lp-channel-fg)]">
             {name}
           </span>
         </div>
@@ -73,16 +69,16 @@ export default function Cta3({
   return (
     <section
       id="channels"
-      className="w-full overflow-x-clip border-t border-[var(--lp-border)] bg-[var(--lp-parchment)] py-20 sm:py-24"
+      className="w-full overflow-x-clip border-t border-[var(--lp-border)] bg-[var(--lp-parchment)] lp-section"
     >
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-2 lg:gap-16">
         <RevealLeft className="flex w-full min-w-0 flex-col items-start gap-6">
           <div className="flex w-full min-w-0 flex-col gap-4">
-            <h2 className="w-full text-balance break-words text-3xl font-semibold tracking-tight text-[var(--lp-ink)] sm:text-4xl lg:text-5xl lg:leading-[1.1]">
+            <h2 className="w-full text-balance break-words text-3xl tracking-tight text-[var(--lp-ink)] sm:text-4xl lg:text-5xl lg:leading-[1.1]">
               {headline}
             </h2>
 
-            <p className="max-w-md text-pretty text-base leading-relaxed text-[var(--lp-muted-fg)] sm:text-lg">
+            <p className="lp-prose max-w-md text-pretty text-[0.9375rem] leading-relaxed text-[var(--lp-muted-fg)] sm:text-base">
               {subtitle}
             </p>
           </div>
@@ -90,7 +86,7 @@ export default function Cta3({
           <div className="flex flex-wrap items-center gap-3">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Button
-                className="h-11 rounded-full border-0 bg-primary-gradient px-6 font-medium text-white shadow-none hover:opacity-90"
+                className="h-11 rounded-full border-0 bg-[var(--lp-brand)] px-6 font-medium text-white shadow-none hover:bg-[color-mix(in_oklab,var(--lp-brand)_88%,black)]"
                 onClick={primaryCta.onClick}
                 asChild={!!primaryCta.href}
               >

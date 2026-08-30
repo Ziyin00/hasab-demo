@@ -15,7 +15,7 @@ const LINKS = [
 export function LandingFooter() {
   return (
     <footer className="border-t border-[var(--lp-border)] bg-[var(--lp-parchment)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12 sm:flex-row sm:items-end sm:justify-between sm:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-6 sm:flex-row sm:items-end sm:justify-between sm:px-8">
         <Reveal className="max-w-sm space-y-3">
           <div className="flex items-center gap-2.5">
             <Image
@@ -28,28 +28,30 @@ export function LandingFooter() {
             <span className="font-display text-base font-medium text-[var(--lp-ink)]">Hasab</span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--lp-muted-fg)]">
-            Hasab AI · Africa · Addis Ababa
+            Hasab AI · Addis Ababa · Ethiopia
           </p>
+        </Reveal>
+
+        <div className="flex flex-col items-start gap-4 sm:items-end">
+          {/* <Stagger className="flex flex-wrap gap-x-6 gap-y-2 sm:justify-end">
+            {LINKS.map((link) => (
+              <StaggerItem key={link.label}>
+                <a
+                  href={link.href}
+                  className="text-sm text-[var(--lp-muted-fg)] underline-offset-4 transition-colors hover:text-[var(--lp-ink)] hover:underline"
+                >
+                  {link.label}
+                </a>
+              </StaggerItem>
+            ))}
+          </Stagger> */}
           <a
             href="mailto:contact@hasab.ai"
-            className="inline-block text-sm text-[var(--lp-ink)] underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
+            className="text-sm text-[var(--lp-ink)] underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
           >
             contact@hasab.ai
           </a>
-        </Reveal>
-
-        <Stagger className="flex flex-wrap gap-x-6 gap-y-2">
-          {LINKS.map((link) => (
-            <StaggerItem key={link.label}>
-              <a
-                href={link.href}
-                className="text-sm text-[var(--lp-muted-fg)] underline-offset-4 transition-colors hover:text-[var(--lp-ink)] hover:underline"
-              >
-                {link.label}
-              </a>
-            </StaggerItem>
-          ))}
-        </Stagger>
+        </div>
       </div>
     </footer>
   );

@@ -68,29 +68,24 @@ export function HowItWorksPage() {
                 <p className="lp-section-label text-[var(--lp-hero-muted)]">How it works</p>
               </HeroReveal>
               <HeroReveal delay={0.15}>
-                <h1 className="mt-3 font-display text-[2rem] font-medium leading-[1.1] tracking-tight text-[var(--lp-hero-fg)] sm:text-5xl">
+                <h1 className="mt-3 text-[2rem] leading-[1.1] tracking-tight text-[var(--lp-hero-fg)] sm:text-5xl">
                   Three steps.{" "}
-                  <span className="bg-primary-gradient bg-clip-text text-transparent">
-                    One knowledge base.
-                  </span>
+                  <span className="text-[var(--lp-brand)]">One knowledge base.</span>
                 </h1>
               </HeroReveal>
               <HeroReveal delay={0.28}>
-                <p className="mx-auto mt-5 max-w-lg text-pretty text-base leading-relaxed text-[var(--lp-hero-body)] sm:text-lg">
+                <p className="lp-prose mx-auto mt-5 max-w-lg text-pretty text-[0.9375rem] leading-relaxed text-[var(--lp-hero-body)] sm:text-base">
                   Contexts, a website widget, and Telegram — wired together so every answer stays
                   on-brand.
                 </p>
               </HeroReveal>
               <HeroReveal delay={0.4}>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-                  <Link href={startHref} className="lp-btn-primary">
-                    Get started
-                  </Link>
-                  <Link
-                    href="/#demo"
-                    className="text-sm font-medium underline-offset-4 transition-opacity hover:opacity-80 hover:underline"
-                  >
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                  <Link href="/#demo" className="lp-btn-primary">
                     Book a demo
+                  </Link>
+                  <Link href={startHref} className="lp-btn-secondary">
+                    Get started
                   </Link>
                 </div>
               </HeroReveal>
@@ -106,13 +101,12 @@ export function HowItWorksPage() {
       <Cta3
         headline={
           <>
-            Ready to deploy{" "}
-            <span className="bg-primary-gradient bg-clip-text text-transparent">Hasab</span>?
+            Ready to deploy <span className="text-[var(--lp-brand)]">Hasab</span>?
           </>
         }
         subtitle="Website widget, Telegram bot, and multilingual support — from one dashboard."
-        primaryCta={{ label: "Get started", href: startHref }}
-        secondaryCta={{ label: "Book a demo", href: "/#demo" }}
+        primaryCta={{ label: "Book a demo", href: "/#demo" }}
+        secondaryCta={{ label: "Get started", href: startHref }}
         products={CTA_PRODUCTS}
       />
 

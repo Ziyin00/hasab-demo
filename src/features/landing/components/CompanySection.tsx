@@ -50,7 +50,7 @@ export function CompanySection() {
   return (
     <section
       id="company"
-      className="border-b border-[var(--lp-border)] bg-[var(--lp-secondary)] py-20 sm:py-24"
+      className="border-b border-[var(--lp-border)] bg-[var(--lp-secondary)] lp-section"
     >
       <div className="mx-auto max-w-6xl px-6 sm:px-8">
         <Reveal className="max-w-2xl">
@@ -113,7 +113,7 @@ export function CompanySection() {
                 businesses, and citizens — not as an afterthought from abroad.
               </p>
               <div className="flex shrink-0 flex-wrap items-center gap-3">
-                <Button asChild className="rounded-full bg-primary-gradient px-5 text-white hover:opacity-90">
+                <Button asChild className="rounded-full bg-[var(--lp-brand)] px-5 text-white hover:bg-[color-mix(in_oklab,var(--lp-brand)_88%,black)]">
                   <a href="#demo">
                     Talk to us
                     <ArrowUpRight className="size-4" />

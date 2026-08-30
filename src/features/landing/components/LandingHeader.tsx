@@ -26,7 +26,7 @@ export function LandingHeader({ themeToggle, navExtra }: LandingHeaderProps) {
             className="size-8 shrink-0"
             priority
           />
-          <span className="font-display text-lg font-medium tracking-wide text-[var(--lp-hero-fg)]">
+          <span className="font-display bg-primary-gradient bg-clip-text text-lg font-semibold tracking-wide text-transparent">
             Hasab
           </span>
         </Link>
