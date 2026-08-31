@@ -44,13 +44,20 @@
   --lp-hero-toggle-border: rgba(22, 11, 34, 0.15);
   --lp-hero-toggle-fg: #6b5a7a;
 
-  --lp-channel-bg: #000000;
-  --lp-channel-border: rgba(255, 255, 255, 0.1);
-  --lp-channel-fg: #ffffff;
-  --lp-channel-muted: rgba(255, 255, 255, 0.6);
-  --lp-channel-icon-bg: rgba(255, 255, 255, 0.05);
-  --lp-channel-icon-fg: rgba(255, 255, 255, 0.5);
-  --lp-channel-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  --lp-channel-bg: #ffffff;
+  --lp-channel-border: #e8e4ef;
+  --lp-channel-fg: #160b22;
+  --lp-channel-muted: #6b5a7a;
+  --lp-channel-icon-bg: #f0ebf6;
+  --lp-channel-icon-fg: #7c20d0;
+  --lp-channel-radius: 0;
+  --lp-channel-icon-radius: 0;
+  --lp-channel-shadow:
+    0 1px 2px rgba(22, 11, 34, 0.04),
+    0 8px 24px rgba(22, 11, 34, 0.06);
+  --lp-channel-hover-shadow:
+    0 1px 2px rgba(22, 11, 34, 0.05),
+    0 12px 32px rgba(22, 11, 34, 0.1);
 
   --font-display: var(--font-landing-display), var(--font-landing-ethiopic), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-landing-body), var(--font-landing-ethiopic), ui-sans-serif, system-ui, sans-serif;
@@ -110,7 +117,10 @@ html.dark .landing {
   --lp-channel-muted: rgba(255, 255, 255, 0.58);
   --lp-channel-icon-bg: rgba(255, 255, 255, 0.05);
   --lp-channel-icon-fg: rgba(255, 255, 255, 0.5);
+  --lp-channel-radius: 0;
+  --lp-channel-icon-radius: 0;
   --lp-channel-shadow: none;
+  --lp-channel-hover-shadow: none;
 }
 
 .landing .font-display {
@@ -214,6 +224,19 @@ html.dark .landing .lp-fidel {
   border-color: color-mix(in oklab, var(--lp-brand-hot) 45%, var(--lp-border));
   background: color-mix(in oklab, var(--lp-brand) 14%, transparent);
   color: var(--lp-ink);
+}
+
+.lp-chat-user-bubble {
+  color: #ffffff !important;
+}
+
+.landing .lp-hero .lp-chat-user-bubble,
+.landing .lp-hero .lp-chat-user-bubble span {
+  color: #ffffff !important;
+}
+
+.lp-chat-user-bubble .lp-fidel {
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .lp-btn-primary {
@@ -650,19 +673,27 @@ html.dark .landing .lp-fidel {
   transform: translateY(-3px);
 }
 
+.lp-platform-section {
+  background: var(--lp-parchment);
+}
+
+html:not(.dark) .landing .lp-platform-section {
+  background: var(--lp-secondary);
+}
+
 /* Channel / admin cards (non-hero sections) */
 .lp-channel-card {
   background: var(--lp-channel-bg);
   border-color: var(--lp-channel-border);
   color: var(--lp-channel-fg);
-  border-radius: 0;
+  border-radius: var(--lp-channel-radius, 0);
   box-shadow: var(--lp-channel-shadow);
 }
 
 .lp-channel-card .lp-channel-icon {
   background: var(--lp-channel-icon-bg);
   color: var(--lp-channel-icon-fg);
-  border-radius: 0;
+  border-radius: var(--lp-channel-icon-radius, 0);
 }
 
 .lp-channel-card,
@@ -674,7 +705,12 @@ html.dark .landing .lp-fidel {
     box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.lp-channel-card:hover,
+.lp-channel-card:hover {
+  border-color: color-mix(in oklab, var(--lp-brand) 32%, var(--lp-channel-border));
+  transform: translateY(-3px);
+  box-shadow: var(--lp-channel-hover-shadow, 0 14px 36px color-mix(in oklab, var(--lp-brand) 8%, transparent));
+}
+
 .lp-admin-card:hover,
 .lp-lang-sample:hover {
   border-color: color-mix(in oklab, var(--lp-brand) 28%, var(--lp-border));
@@ -682,7 +718,14 @@ html.dark .landing .lp-fidel {
   box-shadow: 0 14px 36px color-mix(in oklab, var(--lp-brand) 8%, transparent);
 }
 
+.lp-admin-slide .lp-channel-icon {
+  background: var(--lp-channel-icon-bg);
+  color: var(--lp-channel-icon-fg);
+  border-radius: var(--lp-channel-icon-radius, 0);
+}
+
 .lp-admin-slide {
+  border-radius: 0;
   transition:
     border-color 0.3s ease,
     box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
