@@ -27,7 +27,6 @@ type AdminSlide = {
   hint: string;
   detail: string;
   icon: LucideIcon;
-  accent: string;
   mock: ReactNode;
 };
 
@@ -139,7 +138,6 @@ const SLIDES: AdminSlide[] = [
     hint: "Knowledge your team controls",
     detail: "Curate FAQs, identity, and product facts. Attach the right knowledge to every channel.",
     icon: BookOpen,
-    accent: "from-[#7C20D0] to-[#D020C9]",
     mock: <ContextsMock />,
   },
   {
@@ -147,7 +145,6 @@ const SLIDES: AdminSlide[] = [
     hint: "See what people ask",
     detail: "Traffic, satisfaction, and gaps — so unanswered questions become your content backlog.",
     icon: Activity,
-    accent: "from-[#D020C9] to-[#7C20D0]",
     mock: <AnalyticsMock />,
   },
   {
@@ -155,7 +152,6 @@ const SLIDES: AdminSlide[] = [
     hint: "Searchable inbox",
     detail: "Full transcripts across web, Telegram, and voice — review and improve in one place.",
     icon: MessageCircle,
-    accent: "from-[#5A1899] to-[#D020C9]",
     mock: <ConversationsMock />,
   },
   {
@@ -163,7 +159,6 @@ const SLIDES: AdminSlide[] = [
     hint: "Org credentials",
     detail: "Integrate with your stack. Rotate keys anytime without rebuilding the assistant.",
     icon: KeyRound,
-    accent: "from-[#7C20D0] via-[#9B20D0] to-[#5A1899]",
     mock: <ApiKeyMock />,
   },
   {
@@ -171,7 +166,6 @@ const SLIDES: AdminSlide[] = [
     hint: "Clear audit trail",
     detail: "Who changed what, and when — so governance stays simple for org admins.",
     icon: Shield,
-    accent: "from-[#D020C9] to-[#5A1899]",
     mock: <ActivityMock />,
   },
 ];
@@ -253,34 +247,22 @@ export function DashboardAnalyticsSlider() {
                     key={slide.name}
                     className="pl-4 basis-[88%] sm:basis-[55%] lg:basis-[38%]"
                   >
-                    <article className="lp-admin-slide group relative flex h-full min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-card)] p-6">
-                      <div
-                        aria-hidden
-                        className={cn(
-                          "pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition-opacity duration-500 group-hover:opacity-35",
-                          slide.accent
-                        )}
-                      />
-                      <div className="relative flex items-start justify-between gap-3">
-                        <span
-                          className={cn(
-                            "flex size-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm",
-                            slide.accent
-                          )}
-                        >
+                    <article className="lp-admin-slide relative flex h-full min-h-[320px] flex-col overflow-hidden border border-[var(--lp-border)] bg-[var(--lp-card)] p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="lp-channel-icon flex size-11 items-center justify-center">
                           <Icon className="size-5" />
                         </span>
                         <span className="rounded-full border border-[var(--lp-border)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-[var(--lp-muted-fg)]">
                           {slide.hint}
                         </span>
                       </div>
-                      <h3 className="relative mt-5 text-xl font-medium tracking-tight">
+                      <h3 className="mt-5 text-xl font-medium tracking-tight">
                         {slide.name}
                       </h3>
-                      <p className="relative mt-2 text-sm leading-relaxed text-[var(--lp-muted-fg)]">
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--lp-muted-fg)]">
                         {slide.detail}
                       </p>
-                      <div className="relative mt-6 flex flex-1 flex-col">{slide.mock}</div>
+                      <div className="mt-6 flex flex-1 flex-col">{slide.mock}</div>
                     </article>
                   </CarouselItem>
                 );

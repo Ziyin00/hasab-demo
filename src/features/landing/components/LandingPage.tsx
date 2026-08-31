@@ -103,7 +103,7 @@ export function LandingPage() {
       />
 
       {/* Platform — three channel cards */}
-      <section id="platform" className="lp-section border-b border-[var(--lp-border)]">
+      <section id="platform" className="lp-section lp-platform-section border-b border-[var(--lp-border)]">
         <div className="mx-auto max-w-6xl px-6 sm:px-8">
           <Reveal className="max-w-2xl">
             <p className="lp-section-label">Core platform</p>
@@ -136,7 +136,7 @@ export function LandingPage() {
                       {channel.points.map((point) => (
                         <li
                           key={point}
-                          className="flex items-center gap-2.5 text-sm text-[var(--lp-channel-fg)]"
+                          className="flex items-center gap-2.5 text-sm text-[var(--lp-channel-muted)]"
                         >
                           <span className="size-1.5 shrink-0 rounded-full bg-[var(--lp-brand)]" />
                           {point}

@@ -6,6 +6,7 @@ import { Mic } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { EASE_SMOOTH } from "@/features/landing/motion";
+import "../landing.css";
 
 type Lang = "am" | "en" | "om";
 
@@ -95,13 +96,13 @@ export function HeroChatPreview() {
               }
               transition={{ duration: 0.4, ease: EASE_SMOOTH }}
             >
-              <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[var(--lp-brand)] px-4 py-3 text-[13px] leading-relaxed text-white">
+              <div className="lp-chat-user-bubble ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[var(--lp-brand)] px-4 py-3 text-[13px] leading-relaxed !text-white">
                 <span
-                  className={
-                    lang !== "en"
-                      ? "font-ethiopic text-[0.8125em] font-normal leading-relaxed text-white/95"
-                      : undefined
-                  }
+                  className={cn(
+                    "!text-white",
+                    lang !== "en" &&
+                      "font-ethiopic text-[0.8125em] font-normal leading-relaxed"
+                  )}
                 >
                   {demo.user}
                 </span>
